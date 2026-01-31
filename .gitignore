@@ -5,3 +5,4 @@ venv
 # MyST build outputs
 _build
 *.egg-info/
+output/
