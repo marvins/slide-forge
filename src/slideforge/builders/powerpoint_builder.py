@@ -389,6 +389,7 @@ class PowerPoint_Builder(Base_Builder):
     def _add_block_element(self, slide_obj, element: Universal_Element,
                           config: Dict[str, Any], preserve_colors: bool, current_top):
         """Add a Beamer-style block element to the slide and return the new top position."""
+        print(f"DEBUG: _add_block_element called!")
         content = element.content
 
         # Extract title, content, and type from block
@@ -398,6 +399,7 @@ class PowerPoint_Builder(Base_Builder):
 
             # Use the full content dict, not just the 'content' key
             block_content = content
+            print(f"DEBUG: Block content keys: {list(content.keys())}")
         else:
             block_type = 'block'
             block_title = 'Block'
@@ -480,8 +482,10 @@ class PowerPoint_Builder(Base_Builder):
                                 eq_width = Inches(7.8)
                                 eq_height = Inches(0.8)
 
-                                eq_picture = text_frame.add_picture(str(eq_image_path), eq_left, eq_top, eq_width, eq_height)
-                                current_top += 0.9
+                                # Add equation image to block (add to slide, not text frame)
+                                # Note: Images within text frames are not directly supported in python-pptx
+                                # This would require a more complex layout approach
+                                pass
                             else:
                                 # Fallback to text
                                 text_p = text_frame.add_paragraph()
@@ -506,163 +510,6 @@ class PowerPoint_Builder(Base_Builder):
 
         # Return the new top position (below this element)
         return top + height
-
-    def _add_image_element(self, slide_obj, element: Universal_Element,
-                          config: Dict[str, Any], source_path: str = '', current_top = Inches(2)):
-        """Add an image element to the slide and return the new top position."""
-        content = element.content
-        if isinstance(content, dict) and 'path' in content:
-            image_path = content['path']
-        else:
-            image_path = str(content)
-
-        try:
-            # Convert relative paths to absolute
-            if not Path(image_path).is_absolute():
-                if source_path:
-                    # Resolve relative to source document directory
-                    source_dir = Path(source_path).parent
-                    image_path = source_dir / image_path
-                else:
-                    # Fallback to current working directory
-                    image_path = Path.cwd() / image_path
-
-            if Path(image_path).exists():
-                left = Inches(1) if element.position else Inches(1)
-                top = current_top
-                width = Inches(6) if element.size else Inches(6)
-                height = Inches(4) if element.size else None
-
-                slide_obj.shapes.add_picture(str(image_path), left, top, width, height)
-
-                # Return the new top position (below this image)
-                image_height = height if height else Inches(4)
-                return top + image_height
-            else:
-                self.logger.warning(f"Image file not found: {image_path}")
-                return current_top
-        except Exception as e:
-            self.logger.warning(f"Failed to add image {image_path}: {e}")
-            return current_top
-
-    def _add_block_element(self, slide_obj, element: Universal_Element,
-                          config: Dict[str, Any], preserve_colors: bool, current_top):
-        """Add a Beamer-style block element to the slide and return the new top position."""
-        content = element.content
-
-        # Extract title, content, and type from block
-        if isinstance(content, dict):
-            block_type = content.get('type', 'block')
-            block_title = content.get('title', 'Block')
-            block_content = content.get('content', '')
-        else:
-            block_type = 'block'
-            block_title = 'Block'
-            block_content = str(content)
-
-        left = Inches(1) if element.position else Inches(1)
-        top = current_top
-        width = Inches(8) if element.size else Inches(8)
-        height = Inches(1.5) if element.size else Inches(1.5)  # Taller for blocks
-
-        # Create text box with Beamer-style formatting
-        text_box = slide_obj.shapes.add_textbox(left, top, width, height)
-
-        # Apply Beamer block styling based on type
-        fill = text_box.fill
-        fill.solid()
-
-        # Set colors based on block type
-        if block_type == 'alertblock':
-            fill.fore_color.rgb = RGBColor(220, 38, 127)  # Beamer alert red
-            text_color = RGBColor(255, 255, 255)  # White text
-        elif block_type == 'exampleblock':
-            fill.fore_color.rgb = RGBColor(0, 128, 0)  # Beamer example green
-            text_color = RGBColor(255, 255, 255)  # White text
-        else:  # regular block
-            fill.fore_color.rgb = RGBColor(59, 89, 152)  # Beamer blue background
-            text_color = RGBColor(255, 255, 255)  # White text
-
-        # Add border
-        line = text_box.line
-        line.color.rgb = RGBColor(0, 0, 0)  # Black border
-        line.width = Pt(1)  # Thin border
-
-        text_frame = text_box.text_frame
-        text_frame.margin_left = Inches(0.1)
-        text_frame.margin_right = Inches(0.1)
-        text_frame.margin_top = Inches(0.1)
-        text_frame.margin_bottom = Inches(0.1)
-
-        # Add title paragraph (bold, white)
-        if block_title:
-            title_p = text_frame.add_paragraph()
-            title_p.text = block_title
-            title_p.font.bold = True
-            title_p.font.color.rgb = text_color
-            title_font_size = config.get('content_font_size', 18)
-            if title_font_size > 0:
-                title_p.font.size = Pt(title_font_size)
-
-        # Add content paragraph (white) - handle nested elements
-        if block_content:
-            # Check if block has nested elements (new structure) or raw content (old structure)
-            if isinstance(block_content, dict) and 'elements' in block_content:
-                # New structure: block has parsed elements
-                block_elements = block_content['elements']
-
-                # Render each element within the block
-                current_top = 0.1
-                for block_elem in block_elements:
-                    if block_elem.element_type == Element_Type.TEXT:
-                        # Add text paragraph to block
-                        text_p = text_frame.add_paragraph()
-                        text_p.text = block_elem.content if isinstance(block_elem.content, str) else str(block_elem.content)
-                        text_p.font.color.rgb = text_color
-                        text_p.font.size = Pt(config.get('content_font_size', 18))
-                        current_top += 0.4
-
-                    elif block_elem.element_type == Element_Type.EQUATION:
-                        # Add equation image to block
-                        if hasattr(self, '_render_latex_equation'):
-                            eq_content = block_elem.content.get('latex', '') if isinstance(block_elem.content, dict) else str(block_elem.content)
-                            eq_type = block_elem.content.get('type', 'inline') if isinstance(block_elem.content, dict) else 'inline'
-
-                            eq_image_path = self._render_latex_equation(eq_content, eq_type, '')
-
-                            if eq_image_path and eq_image_path.exists():
-                                # Add equation image to block
-                                eq_left = Inches(0.1)
-                                eq_top = Inches(0.1) + current_top
-                                eq_width = Inches(7.8)
-                                eq_height = Inches(0.8)
-
-                                eq_picture = text_frame.add_picture(str(eq_image_path), eq_left, eq_top, eq_width, eq_height)
-                                current_top += 0.9
-                            else:
-                                # Fallback to text
-                                text_p = text_frame.add_paragraph()
-                                text_p.text = eq_content
-                                text_p.font.color.rgb = text_color
-                                text_p.font.size = Pt(config.get('content_font_size', 18))
-                                current_top += 0.4
-
-                    elif block_elem.element_type == Element_Type.IMAGE:
-                        # Add image to block (if supported)
-                        # This would need special handling for images within blocks
-                        pass
-
-            elif isinstance(block_content, str):
-                # Old structure: raw content string - treat as plain text
-                content_p = text_frame.add_paragraph()
-                content_p.text = block_content
-                content_p.font.color.rgb = text_color
-                content_font_size = config.get('content_font_size', 18)
-                if content_font_size > 0:
-                    content_p.font.size = Pt(content_font_size)
-
-            # Return the new top position (below this element)
-            return top + height
 
     def _add_text_to_placeholder(self, slide_obj, element: Universal_Element,
                                 config: Dict[str, Any], preserve_colors: bool) -> bool:

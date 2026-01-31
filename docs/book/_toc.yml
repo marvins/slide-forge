@@ -20,6 +20,7 @@
 - part: Design
   chapters:
     - file: design-notes
+    - file: design/equation-rendering
     - file: todo
 
 - file: contributing
