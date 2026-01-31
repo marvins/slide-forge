@@ -218,7 +218,13 @@ class PowerPoint_Builder(Base_Builder):
                 elif element.element_type == Element_Type.BLOCK:
                     # Use content placeholder for first block if available
                     if not content_placeholder_used and hasattr(slide_obj.shapes, 'placeholders'):
-                        content_placeholder_used = self._add_block_to_placeholder(slide_obj, element, config, preserve_colors)
+                        placeholder_success = self._add_block_to_placeholder(slide_obj, element, config, preserve_colors)
+                        if placeholder_success:
+                            content_placeholder_used = True
+                        else:
+                            # Fallback to element method if placeholder fails
+                            current_top = Inches(2.5)  # Start below title
+                            self._add_block_element(slide_obj, element, config, preserve_colors, current_top)
                     else:
                         # For blocks, we need to track positioning
                         current_top = Inches(2.5)  # Start below title
