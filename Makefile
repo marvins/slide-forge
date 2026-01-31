@@ -9,17 +9,24 @@ BIB_ENGINE = bibtex
 GLOSSARY_ENGINE = makeglossaries
 
 # Default target
-.PHONY: all clean help pdf view watch
+.PHONY: all clean help pdf view watch beamer2pdf beamer2pptx pptx2pdf pptx2md pptx convert-md convert-tex pdf-only quick
 
 # Find all .tex files in the current directory and subdirectories
+# Used for automatic file detection and fallback scenarios
 TEX_FILES := $(wildcard **/*.tex *.tex)
-# Get the main .tex file (prefer pptx/ directory)
-MAIN_TEX = $(firstword $(wildcard pptx/*.tex))
-# Fallback to any .tex file if none in pptx/
+
+# Smart main file detection with priority order:
+# 1. Prefer latex/ directory for Beamer presentations (highest priority)
+# 2. Fallback to pptx/ directory for PowerPoint-generated LaTeX files
+# 3. Fallback to any .tex file in current directory or subdirectories
+# 4. Default to main.tex if no .tex files found
+MAIN_TEX = $(firstword $(wildcard latex/*.tex))
+ifeq ($(MAIN_TEX),)
+    MAIN_TEX = $(firstword $(wildcard pptx/*.tex))
+endif
 ifeq ($(MAIN_TEX),)
     MAIN_TEX = $(firstword $(TEX_FILES))
 endif
-# Default main file if no .tex files found
 ifeq ($(MAIN_TEX),)
     MAIN_TEX = main.tex
 endif
@@ -39,6 +46,8 @@ help:
 	@echo "  pdflatex   - Build PDF using pdfLaTeX"
 	@echo "  xelatex    - Build PDF using XeLaTeX"
 	@echo "  lualatex   - Build PDF using LuaLaTeX"
+	@echo "  beamer2pdf - Build Beamer presentation to PDF"
+	@echo "  beamer2pptx- Convert Beamer to PowerPoint (stub)"
 	@echo "  pptx2pdf   - Convert PowerPoint to LaTeX and build PDF"
 	@echo "  pptx2md    - Convert PowerPoint to Markdown"
 	@echo "  pptx       - Convert PowerPoint to both Markdown and LaTeX"
@@ -59,17 +68,44 @@ $(BUILD_DIR) $(OUTPUT_DIR):
 	@mkdir -p $@
 
 # PDF compilation with specified engine
+# This target first converts PowerPoint to LaTeX, then builds the PDF
+# Used for PowerPoint-to-PDF workflow
 pdf: $(BUILD_DIR) $(OUTPUT_DIR) convert-tex
+	# Dynamically find the main .tex file from pptx/ directory after conversion
 	@$(eval MAIN_TEX := $(firstword $(wildcard pptx/*.tex)))
+	# Check if we found a .tex file to compile
 	@if [ -z "$(MAIN_TEX)" ]; then \
 		echo "No .tex file found in pptx/ directory"; \
 		exit 1; \
 	fi
 	@echo "Building $(MAIN_TEX) with $(LATEX_ENGINE)..."
+	# Copy PowerPoint-generated images to build directory for LaTeX compilation
 	@cp pptx/*.png $(BUILD_DIR)/ 2>/dev/null || true
+	# Compile LaTeX from build directory (relative path to source)
 	@cd $(BUILD_DIR) && $(LATEX_ENGINE) $(LATEX_FLAGS) ../$(MAIN_TEX)
-	@cp $(BUILD_DIR)/$(basename $(MAIN_TEX)).pdf $(OUTPUT_DIR)/ 2>/dev/null || true
-	@echo "PDF created in $(OUTPUT_DIR)/"
+	# Copy generated PDF to output directory
+	@cp $(BUILD_DIR)/$(basename $(MAIN_TEX)).pdf $(OUTPUT_DIR)/
+	@echo "PDF created in $(OUTPUT_DIR)/$(basename $(MAIN_TEX)).pdf"
+
+# PDF compilation for existing LaTeX files (no PowerPoint conversion)
+# This target builds LaTeX files directly without converting from PowerPoint first
+# Used for Beamer presentations and other existing LaTeX documents
+pdf-only: $(BUILD_DIR) $(OUTPUT_DIR)
+	@echo "Building $(MAIN_TEX) with $(LATEX_ENGINE)..."
+	# Copy image files from latex/images directory to build directory for LaTeX to find
+	@cp latex/images/*.png $(BUILD_DIR)/ 2>/dev/null || true
+	# Also copy any PowerPoint-generated images in case they're referenced
+	@cp pptx/*.png $(BUILD_DIR)/ 2>/dev/null || true
+	# Change to build directory and compile LaTeX with specified engine
+	@cd $(BUILD_DIR) && $(LATEX_ENGINE) $(LATEX_FLAGS) ../$(MAIN_TEX)
+	# Check if PDF was successfully created before copying
+	@if [ -f build/presentation.pdf ]; then \
+		cp build/presentation.pdf $(OUTPUT_DIR)/; \
+		echo "PDF created in $(OUTPUT_DIR)/presentation.pdf"; \
+	else \
+		echo "Error: PDF not found at build/presentation.pdf"; \
+		exit 1; \
+	fi
 
 # Specific engine targets
 pdflatex: LATEX_ENGINE = pdflatex
@@ -85,6 +121,7 @@ lualatex: pdf
 full: $(BUILD_DIR) $(OUTPUT_DIR)
 	@echo "Full compilation of $(MAIN_TEX)..."
 	@cp pptx/*.png $(BUILD_DIR)/ 2>/dev/null || true
+	@cp latex/images/*.png $(BUILD_DIR)/ 2>/dev/null || true
 	@cd $(BUILD_DIR) && $(LATEX_ENGINE) $(LATEX_FLAGS) ../$(MAIN_TEX)
 	@if grep -q "\\bibliography" ../$(MAIN_TEX); then \
 		echo "Running bibliography..."; \
@@ -96,8 +133,8 @@ full: $(BUILD_DIR) $(OUTPUT_DIR)
 	fi
 	@cd $(BUILD_DIR) && $(LATEX_ENGINE) $(LATEX_FLAGS) ../$(MAIN_TEX)
 	@cd $(BUILD_DIR) && $(LATEX_ENGINE) $(LATEX_FLAGS) ../$(MAIN_TEX)
-	@cp $(BUILD_DIR)/$(basename $(MAIN_TEX)).pdf $(OUTPUT_DIR)/ 2>/dev/null || true
-	@echo "Full compilation complete. PDF in $(OUTPUT_DIR)/"
+	@cp $(BUILD_DIR)/$(basename $(MAIN_TEX)).pdf $(OUTPUT_DIR)/
+	@echo "Full compilation complete. PDF in $(OUTPUT_DIR)/$(basename $(MAIN_TEX)).pdf"
 
 # Clean auxiliary files
 clean:
@@ -164,37 +201,73 @@ install-deps:
 	fi
 
 # Convert PowerPoint to formats (requires ppt_converter.py)
+# These targets handle PowerPoint conversion workflows
+
+# Complete PowerPoint to PDF workflow
+# Converts PowerPoint to LaTeX, then builds PDF
 pptx2pdf: convert-tex pdf
 	@echo "PowerPoint → LaTeX → PDF complete!"
 
+# PowerPoint to Markdown workflow
+# Converts PowerPoint to Marp-compatible Markdown
 pptx2md: convert-md
 	@echo "PowerPoint → Markdown complete!"
 	@echo "Markdown files are in pptx/ directory"
 
+# Convert PowerPoint to both formats
+# Converts to both Markdown and LaTeX for maximum flexibility
 pptx: convert-md convert-tex
 
+# Convert PowerPoint to Markdown
+# Iterates through all .pptx files in pptx/ directory and converts to Markdown
 convert-md:
 	@echo "Converting PowerPoint to Markdown..."
 	@for file in pptx/*.pptx; do \
 		bash -c "source venv/bin/activate && python3 ppt_converter.py \"$$file\" md"; \
 	done
 
+# Convert PowerPoint to LaTeX
+# Iterates through all .pptx files in pptx/ directory and converts to LaTeX
 convert-tex:
 	@echo "Converting PowerPoint to LaTeX..."
 	@for file in pptx/*.pptx; do \
 		bash -c "source venv/bin/activate && python3 ppt_converter.py \"$$file\" tex"; \
 	done
 
+# Beamer conversion targets
+# These targets are specifically for Beamer presentation workflows
+
+# Build Beamer presentation to PDF
+# Uses pdf-only to avoid PowerPoint conversion, builds existing LaTeX/Beamer files
+beamer2pdf: pdf-only
+	@echo "Beamer → PDF complete!"
+	@echo "PDF saved to $(OUTPUT_DIR)/$(basename $(MAIN_TEX)).pdf"
+
+# Convert Beamer to PowerPoint (stub implementation)
+# This is a placeholder for future Beamer-to-PowerPoint conversion functionality
+beamer2pptx:
+	@echo "Beamer → PowerPoint conversion (stub - not implemented yet)"
+	@echo "This would convert $(MAIN_TEX) to PowerPoint format"
+	@echo "For now, use: python ppt_converter.py $(MAIN_TEX) pptx"
+	# Attempt conversion using existing converter, but don't fail if it doesn't work
+	@bash -c "source venv/bin/activate && python3 ppt_converter.py \"$(MAIN_TEX)\" pptx" 2>/dev/null || echo "Conversion failed - feature not fully implemented"
+	# Copy generated PPTX to output directory if it exists
+	@if [ -f latex/presentation.pptx ]; then \
+		cp latex/presentation.pptx $(OUTPUT_DIR)/; \
+		echo "PowerPoint saved to $(OUTPUT_DIR)/presentation.pptx"; \
+	fi
+
 convert-all: convert-md convert-tex
 
 # Quick build for development (faster, no bibliography)
-quick: $(BUILD_DIR)
+quick: $(BUILD_DIR) $(OUTPUT_DIR)
 	@echo "Quick build of $(MAIN_TEX)..."
 	@cp pptx/*.png $(BUILD_DIR)/ 2>/dev/null || true
+	@cp latex/images/*.png $(BUILD_DIR)/ 2>/dev/null || true
 	@cd $(BUILD_DIR) && $(LATEX_ENGINE) $(LATEX_FLAGS) -draftmode ../$(MAIN_TEX)
 	@cd $(BUILD_DIR) && $(LATEX_ENGINE) $(LATEX_FLAGS) ../$(MAIN_TEX)
-	@cp $(BUILD_DIR)/$(basename $(MAIN_TEX)).pdf . 2>/dev/null || true
-	@echo "Quick build complete."
+	@cp $(BUILD_DIR)/$(basename $(MAIN_TEX)).pdf $(OUTPUT_DIR)/
+	@echo "Quick build complete. PDF in $(OUTPUT_DIR)/$(basename $(MAIN_TEX)).pdf"
 
 # Show current configuration
 config:

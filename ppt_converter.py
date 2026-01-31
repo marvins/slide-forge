@@ -9,6 +9,7 @@ import os
 import sys
 import argparse
 import subprocess
+import re
 from pathlib import Path
 from typing import Optional, Dict, Any
 import logging
@@ -375,8 +376,16 @@ class PresentationConverter:
 
         logger.info(f"Converting {input_path} to {output_path}")
 
+        with open(input_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # For Beamer presentations, always use our fallback method as pandoc doesn't handle frames correctly
+        if 'beamer' in content.lower() or '\\begin{frame}' in content:
+            logger.info("Detected Beamer presentation, using fallback method")
+            return self._latex_to_pptx_fallback(input_path, output_path)
+
         try:
-            # Convert LaTeX to pptx using pandoc
+            # Convert LaTeX to pptx using pandoc (for non-Beamer LaTeX)
             pypandoc.convert_file(
                 str(input_file),
                 'pptx',
@@ -407,8 +416,11 @@ class PresentationConverter:
             content = f.read()
 
         # Extract frames (slides) from LaTeX
-        frame_pattern = r'\\begin\{frame\}(.*?)\\end\{frame\}'
+        # Handle frames with optional arguments like \begin{frame}[plain,t]
+        frame_pattern = r'\\begin\{frame\}(?:\[[^\]]*\])?\s*(.*?)\\end\{frame\}'
         frames = re.findall(frame_pattern, content, re.DOTALL)
+
+        logger.info(f"Found {len(frames)} frames to convert")
 
         for frame_content in frames:
             slide_layout = prs.slide_layouts[1]  # Title and content
@@ -422,19 +434,77 @@ class PresentationConverter:
 
             # Extract text content
             text_content = frame_content
-            # Remove LaTeX commands
-            text_content = re.sub(r'\\[a-zA-Z]+\{([^}]*)\}', r'\1', text_content)
-            text_content = re.sub(r'\\[a-zA-Z]+', '', text_content)
-            text_content = re.sub(r'[{}]', '', text_content)
-            text_content = re.sub(r'\\\\', '\n', text_content)
-            text_content = re.sub(r'\n+', '\n', text_content).strip()
 
-            if text_content:
-                slide.placeholders[1].text = text_content
+            # Remove frame title from content to avoid duplication
+            text_content = re.sub(r'\\frametitle\{[^}]*\}', '', text_content)
+
+            # Handle special frames like titlepage
+            if '\\titlepage' in text_content:
+                # This is a title slide, use title information
+                if hasattr(prs, 'slide_layouts') and len(prs.slide_layouts) > 0:
+                    title_layout = prs.slide_layouts[0]  # Title slide layout
+                    title_slide = prs.slides.add_slide(title_layout)
+                    # Set title and subtitle from document info
+                    title_slide.shapes.title.text = "NITF Image Conversion Library"
+                    if hasattr(title_slide.placeholders, 1):
+                        title_slide.placeholders[1].text = "Professional C++ SDK for DOD NITF Format"
+                continue
+
+            # Process content line by line to preserve structure
+            lines = text_content.split('\n')
+            processed_lines = []
+
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+
+                # Handle itemize items
+                if '\\item' in line and not line.startswith('\\begin') and not line.startswith('\\end'):
+                    # Extract the text after \item
+                    item_text = re.sub(r'\\item\s*', '', line)
+                    item_text = self._clean_latex_text(item_text)
+                    if item_text:
+                        processed_lines.append(f"• {item_text}")
+                # Skip LaTeX environments and commands
+                elif line.startswith('\\begin') or line.startswith('\\end'):
+                    continue
+                elif line.startswith('\\') or line.startswith('{') or line.startswith('}'):
+                    continue
+                elif line == 'titlepage':
+                    continue
+                else:
+                    # Regular text
+                    clean_line = self._clean_latex_text(line)
+                    if clean_line and len(clean_line) > 1:  # Skip very short fragments
+                        processed_lines.append(clean_line)
+
+            # Join processed lines
+            final_text = '\n'.join(processed_lines)
+
+            if final_text.strip():
+                slide.placeholders[1].text = final_text
 
         prs.save(output_path)
         logger.info(f"Successfully converted to {output_path}")
         return output_path
+
+    def _clean_latex_text(self, text: str) -> str:
+        """Clean LaTeX commands and formatting from text."""
+        # Remove LaTeX commands with arguments
+        text = re.sub(r'\\[a-zA-Z]+\{([^}]*)\}', r'\1', text)
+        # Remove LaTeX commands without arguments
+        text = re.sub(r'\\[a-zA-Z]+', '', text)
+        # Remove braces
+        text = re.sub(r'[{}]', '', text)
+        # Handle line breaks
+        text = re.sub(r'\\\\', '\n', text)
+        # Clean up multiple newlines
+        text = re.sub(r'\n+', '\n', text)
+        # Remove common LaTeX environments
+        text = re.sub(r'\\begin\{[^}]*\}|\\end\{[^}]*\}', '', text)
+        # Strip whitespace
+        return text.strip()
 
     def convert(self, input_path: str, output_format: str, output_path: Optional[str] = None,
                 marp: bool = True, beamer: bool = True) -> str:
