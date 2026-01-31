@@ -62,6 +62,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book/_build/html
+          destination_dir: slide-forge
 
       - name: Comment PR with preview
         if: github.event_name == 'pull_request'
