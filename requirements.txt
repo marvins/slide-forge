@@ -1,0 +1,7 @@
+python-pptx==0.6.21
+pypandoc==1.13
+markdown==3.5.1
+pymdown-extensions==10.3
+beautifulsoup4==4.12.2
+pillow>=10.0.0
+python-docx==0.8.11
