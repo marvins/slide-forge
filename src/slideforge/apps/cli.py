@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from ..core import SlideForge
+from ..core import Slide_Forge
 
 
 def create_parser() -> argparse.ArgumentParser:

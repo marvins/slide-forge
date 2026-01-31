@@ -12,8 +12,8 @@ project:
 site:
   template: book-theme
   options:
-    favicon: favicon.ico
-    logo: site_logo.png
+    # favicon: favicon.ico
+    # logo: site_logo.png
   nav:
     - title: Introduction
       url: /intro
@@ -29,9 +29,26 @@ site:
       children:
         - title: Class Diagrams
           url: /reference/class-diagrams
+        - title: New Reference Page
+          url: /reference/new-page
 
-# Set base URL for GitHub Pages deployment
-base_url: /slide-forge/
+# MyST v2 configuration for autodoc
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - deflist
+    - html_admonition
+    - html_image
+    - linkify
+    - replacements
+    - smartquotes
+    - substitution
+    - tasklist
+    - amsmath
+    - attrs_inline
+    - dollarmath
+    - substitution
+    - tasklist
 
 # Sphinx configuration for auto-generated API docs
 sphinx:

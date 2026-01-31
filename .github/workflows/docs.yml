@@ -40,10 +40,14 @@ jobs:
           pip install jupyter-book sphinx myst-nb
           pip install -e .  # Install slide-forge in development mode
 
+      - name: Generate API documentation
+        run: |
+          python tools/generate_api_docs.py
+
       - name: Build Jupyter Book
         run: |
           cd docs/book
-          jupyter-book build --html
+          BASE_URL=/slide-forge/ jupyter-book build --html
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -112,10 +116,14 @@ jobs:
           pip install jupyter-book sphinx myst-nb
           pip install -e .
 
+      - name: Generate API documentation
+        run: |
+          python tools/generate_api_docs.py
+
       - name: Build documentation (check for errors)
         run: |
           cd docs/book
-          jupyter-book build --html
+          BASE_URL=/slide-forge/ jupyter-book build --html
 
       - name: Check for broken links
         run: |
@@ -139,8 +147,8 @@ jobs:
             echo "❌ quickstart.md is missing or empty"
             exit 1
           fi
-          if [ ! -s "api/core.md" ]; then
-            echo "❌ api/core.md is missing or empty"
+          if [ ! -s "api/auto.md" ]; then
+            echo "❌ api/auto.md is missing or empty"
             exit 1
           fi
           if [ ! -s "reference/class-diagrams.md" ]; then
