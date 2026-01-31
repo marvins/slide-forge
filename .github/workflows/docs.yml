@@ -58,7 +58,6 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/book/_build/html
-          cname: slide-forge.readthedocs.io  # Optional: custom domain
 
       - name: Comment PR with preview
         if: github.event_name == 'pull_request'

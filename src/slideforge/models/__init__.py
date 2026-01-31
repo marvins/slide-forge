@@ -18,12 +18,41 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""
-Slide Forge - LaTeX Beamer to PowerPoint Converter
-A Python library for creating PowerPoint presentations from LaTeX Beamer source.
-"""
+"""Data models for Slide Forge."""
 
-from .core import Slide_Forge
+from .universal import (
+    Universal_Document,
+    Universal_Frame,
+    Universal_Element,
+    Metadata,
+    Element_Type,
+    Layout_Type,
+    Formatting,
+    Text_Content,
+    Position,
+    Size,
+    Conversion_Options,
+    # Utility functions
+    create_text_element,
+    create_image_element,
+    create_itemize_element,
+    merge_documents
+)
 
-__version__ = "0.1.0"
-__all__ = ["Slide_Forge"]
+__all__ = [
+    'Universal_Document',
+    'Universal_Frame', 
+    'Universal_Element',
+    'Metadata',
+    'Element_Type',
+    'Layout_Type',
+    'Formatting',
+    'Text_Content',
+    'Position',
+    'Size',
+    'Conversion_Options',
+    'create_text_element',
+    'create_image_element',
+    'create_itemize_element',
+    'merge_documents'
+]
