@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: license-header-check
         name: Check license headers
-        entry: python scripts/check_license_headers.py
+        entry: python3 scripts/check_license_headers.py
         language: system
         files: '^.*\.(py|sh)$'
         pass_filenames: false
