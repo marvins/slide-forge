@@ -36,7 +36,7 @@ class TestSlideForge:
     @pytest.fixture
     def slide_forge(self):
         """Create Slide_Forge instance."""
-        
+
         # Create instance without auto-registration for testing
         slide_forge = Slide_Forge()
 
@@ -211,7 +211,7 @@ class TestSlideForge:
 
         assert slide_forge.default_options.preserve_colors is False
         assert slide_forge.default_options.verbose is True
-        assert slide_forge.default_options.custom_settings.get('theme') == 'professional'
+        assert slide_forge.default_options.theme == 'professional'
 
     def test_set_default_options_invalid_option(self, slide_forge):
         """Test setting invalid default option."""
@@ -340,6 +340,23 @@ class TestSlideForge:
 
     def test_custom_settings_passed_through(self, slide_forge, sample_latex_file, output_file):
         """Test that custom settings are passed through correctly."""
+        # Register mock components for testing
+        from unittest.mock import Mock
+        mock_parser = Mock()
+        mock_document = Mock()
+        mock_document.get_total_frames.return_value = 1
+        mock_document.source_format = 'latex'
+        mock_document.source_path = sample_latex_file
+        mock_parser.parse_file.return_value = mock_document
+
+        slide_forge.parsers['latex'] = mock_parser
+        slide_forge.builders['pptx'] = Mock()
+
+        # Configure mapper to avoid iteration issues
+        slide_forge.mapper = Mock()
+        slide_forge.mapper.can_convert.return_value = True
+        slide_forge.mapper.map_document.return_value = []
+
         custom_settings = {"custom_option": "custom_value"}
 
         with patch.object(slide_forge.builders['pptx'], 'build_presentation') as mock_build:
@@ -349,21 +366,39 @@ class TestSlideForge:
                 custom_settings=custom_settings
             )
 
-            # Check that custom settings were passed
+            # Check that custom settings were passed (merged with source_path)
             mock_build.assert_called_once()
             call_args = mock_build.call_args
-            assert 'custom_settings' in call_args[1]
-            assert call_args[1]['custom_settings'] == custom_settings
+            build_options = call_args[1]
+            assert 'custom_option' in build_options
+            assert build_options['custom_option'] == 'custom_value'
+            assert 'source_path' in build_options
 
     def test_source_path_passed_to_builder(self, slide_forge, sample_latex_file, output_file):
         """Test that source path is passed to builder."""
+        # Register mock components for testing
+        from unittest.mock import Mock
+        mock_parser = Mock()
+        mock_document = Mock()
+        mock_document.get_total_frames.return_value = 1
+        mock_document.source_format = 'latex'
+        mock_document.source_path = sample_latex_file
+        mock_parser.parse_file.return_value = mock_document
+
+        slide_forge.parsers['latex'] = mock_parser
+        slide_forge.builders['pptx'] = Mock()
+        # Configure mapper to avoid iteration issues
+        slide_forge.mapper = Mock()
+        slide_forge.mapper.can_convert.return_value = True
+        slide_forge.mapper.map_document.return_value = []
+
         with patch.object(slide_forge.builders['pptx'], 'build_presentation') as mock_build:
             slide_forge.convert_file(
                 str(sample_latex_file),
                 str(output_file)
             )
 
-            # Check that source_path was added to custom settings
+            # Check that source_path was added to build options
             call_args = mock_build.call_args
             assert 'source_path' in call_args[1]
             assert call_args[1]['source_path'] == str(sample_latex_file)
