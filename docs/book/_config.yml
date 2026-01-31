@@ -1,0 +1,80 @@
+title: Slide Forge Documentation
+author: Slide Forge Team
+logo: ../images/logo.png
+description: Documentation for Slide Forge - LaTeX Beamer to PowerPoint converter
+
+# Build settings
+build:
+  # These settings automatically create a table of contents
+  create_toc: true
+  
+# Site configuration
+site:
+  # Template and theme
+  template: book-theme
+  theme:
+    # Theme options
+    font:
+      text: Roboto
+      code: Roboto Mono
+    colors:
+      # You can customize colors here
+      primary: "#0066cc"
+      secondary: "#f8f9fa"
+  
+# Project information
+project:
+  # GitHub integration
+  github: "marvins/slide-forge"
+  
+# Sphinx extensions for Python API docs
+sphinx:
+  config:
+    html_theme: "sphinx_book_theme"
+    html_title: "Slide Forge Documentation"
+    html_logo: "../images/logo.png"
+    
+    # Extensions
+    extensions:
+      - sphinx.ext.autodoc
+      - sphinx.ext.viewcode
+      - sphinx.ext.napoleon
+      - sphinx.ext.intersphinx
+      - myst_parser
+      - jupyter_sphinx
+      - sphinx.ext.autosummary
+    
+    # Napoleon settings for Google/NumPy style docstrings
+    napoleon_google_docstring: true
+    napoleon_numpy_docstring: true
+    napoleon_include_init_with_doc: false
+    napoleon_include_private_with_doc: false
+    
+    # Autodoc settings
+    autodoc_default_options:
+      members: true
+      member-order: bysource
+      special-members: __init__
+      undoc-members: true
+      exclude-members: __weakref__
+    
+    # Intersphinx mapping
+    intersphinx_mapping:
+      python: ("https://docs.python.org/3", None)
+    
+    # Source code links
+    html_show_sourcelink: true
+    
+# Parse and render settings
+parse:
+  myst_enable_extensions:
+    - colon_fence
+    - deflist
+    - html_admonition
+    - html_image
+    - linkify
+    - replacements
+    - smartquotes
+    - substitution
+    - tasklist
+    - amsmath

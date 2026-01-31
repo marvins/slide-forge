@@ -1,0 +1,91 @@
+# See docs at: https://mystmd.org/guide/frontmatter
+version: 1
+project:
+  id: 6b2f2b93-0db7-4704-b28a-7a84d9d5d384
+  title: Slide Forge Documentation
+  description: Documentation for Slide Forge - LaTeX Beamer to PowerPoint converter
+  keywords: [latex, beamer, powerpoint, conversion, python]
+  authors:
+    - name: Slide Forge Team
+  github: https://github.com/marvins/slide-forge
+  # To autogenerate a Table of Contents, run "jupyter book init --write-toc"
+site:
+  template: book-theme
+  options:
+    favicon: favicon.ico
+    logo: site_logo.png
+  nav:
+    - title: Introduction
+      url: /intro
+    - title: Installation
+      url: /installation
+    - title: Quick Start
+      url: /quickstart
+    - title: API Reference
+      children:
+        - title: Core API
+          url: /api/core
+        - title: Auto-Generated API
+          url: /api/auto
+    - title: Reference
+      children:
+        - title: Class Diagrams
+          url: /reference/class-diagrams
+
+# Sphinx configuration for auto-generated API docs
+sphinx:
+  config:
+    html_theme: "sphinx_book_theme"
+    html_title: "Slide Forge Documentation"
+
+    # Extensions
+    extensions:
+      - sphinx.ext.autodoc
+      - sphinx.ext.viewcode
+      - sphinx.ext.napoleon
+      - sphinx.ext.intersphinx
+      - sphinx.ext.autosummary
+      - myst_parser
+      - jupyter_sphinx
+
+    # Napoleon settings for Google/NumPy style docstrings
+    napoleon_google_docstring: true
+    napoleon_numpy_docstring: true
+    napoleon_include_init_with_doc: false
+    napoleon_include_private_with_doc: false
+    napoleon_include_special_with_doc: true
+
+    # Autodoc settings
+    autodoc_default_options:
+      members: true
+      member-order: bysource
+      special-members: __init__
+      undoc-members: true
+      exclude-members: __weakref__
+
+    # Autosummary settings
+    autosummary_generate: true
+    autosummary_imported_members: true
+
+    # Intersphinx mapping
+    intersphinx_mapping:
+      python: ("https://docs.python.org/3", None)
+
+    # Source code links
+    html_show_sourcelink: true
+
+    # Viewcode settings
+    viewcode_follow_imported_members: true
+
+    # Parse and render settings
+    myst_enable_extensions:
+      - colon_fence
+      - deflist
+      - html_admonition
+      - html_image
+      - linkify
+      - replacements
+      - smartquotes
+      - substitution
+      - tasklist
+      - amsmath

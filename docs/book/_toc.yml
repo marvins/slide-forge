@@ -1,0 +1,23 @@
+# Table of Contents for Slide Forge Documentation
+
+- file: intro
+  title: Introduction
+
+- part: Getting Started
+  chapters:
+    - file: installation
+    - file: quickstart
+
+- part: API Reference
+  chapters:
+    - file: api/auto
+
+- part: Reference
+  chapters:
+    - file: reference/class-diagrams
+
+- file: contributing
+  title: Contributing
+
+- file: changelog
+  title: Changelog
