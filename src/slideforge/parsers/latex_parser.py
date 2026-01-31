@@ -182,6 +182,10 @@ class LaTeX_Parser(Base_Parser):
                 continue
 
             # Handle text content
+            # Skip frametitle lines since they're already extracted as frame titles
+            if self.title_pattern.search(line):
+                continue
+
             # Remove LaTeX commands for basic text extraction
             clean_line = re.sub(r'\\[a-zA-Z]+\*?(?:\[[^\]]*\])?\{[^}]*\}', '', line)
             clean_line = re.sub(r'[{}]', '', clean_line).strip()
