@@ -210,7 +210,9 @@ class Slide_Forge:
 
             # Build output document
             builder = self.builders[target_format]
-            success = builder.build_presentation(slide_structures, output_path, **options.custom_settings)
+            # Pass source path for image resolution
+            build_options = {**options.custom_settings, 'source_path': document.source_path}
+            success = builder.build_presentation(slide_structures, output_path, **build_options)
 
             if success and options.verbose:
                 self.logger.info(f"Successfully built {target_format} document: {output_path}")
@@ -270,7 +272,10 @@ class Slide_Forge:
                 slide_structures = self._document_to_slides(document)
 
             builder = self.builders[target_format]
-            return builder.build_presentation(slide_structures, output_path, **options.custom_settings)
+            
+            # Pass source path for image resolution (empty for string conversion)
+            build_options = {**options.custom_settings, 'source_path': ''}
+            return builder.build_presentation(slide_structures, output_path, **build_options)
 
         except Exception as e:
             self.logger.error(f"String conversion failed: {e}")

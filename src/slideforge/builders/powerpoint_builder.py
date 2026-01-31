@@ -25,7 +25,7 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from pptx import Presentation
-from pptx.util import Inches
+from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 
@@ -109,11 +109,14 @@ class PowerPoint_Builder(Base_Builder):
             preserve_colors = kwargs.get('preserve_colors', True)
             include_images = kwargs.get('include_images', True)
             verbose = kwargs.get('verbose', False)
+            source_path = kwargs.get('source_path', '')  # Get source path for image resolution
 
             if verbose:
                 self.logger.info(f"Building PowerPoint presentation with theme: {theme}")
                 self.logger.info(f"Output file: {output_file}")
                 self.logger.info(f"Number of slides: {len(slides)}")
+                if source_path:
+                    self.logger.info(f"Source path: {source_path}")
 
             # Validate theme
             if theme not in self.supported_themes:
@@ -144,10 +147,13 @@ class PowerPoint_Builder(Base_Builder):
                     title_shape.text = slide.title
                     if preserve_colors:
                         title_shape.text_frame.paragraphs[0].font.color.rgb = config['title_color']
-                    title_shape.text_frame.paragraphs[0].font.size = config['title_font_size']
+                    # Set font size with proper conversion
+                    font_size = config.get('title_font_size', 44)
+                    if font_size > 0:
+                        title_shape.text_frame.paragraphs[0].font.size = Pt(font_size)
 
-                # Add elements
-                self._add_elements_to_slide(slide_obj, slide.elements, config, preserve_colors, include_images)
+                # Add elements to slide, using content placeholder when possible
+                self._add_elements_to_slide(slide_obj, slide.elements, config, preserve_colors, include_images, source_path)
 
             # Ensure output directory exists
             output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -184,47 +190,82 @@ class PowerPoint_Builder(Base_Builder):
             return presentation.slide_layouts[1]  # Title and Content (default)
 
     def _add_elements_to_slide(self, slide_obj, elements: List[Universal_Element],
-                              config: Dict[str, Any], preserve_colors: bool, include_images: bool):
-        """Add elements to a PowerPoint slide."""
+                              config: Dict[str, Any], preserve_colors: bool, include_images: bool, source_path: str = ''):
+        """Add elements to a PowerPoint slide using native placeholders when possible."""
+        content_placeholder_used = False
+
         for element in elements:
             try:
                 if element.element_type == Element_Type.TEXT:
-                    self._add_text_element(slide_obj, element, config, preserve_colors)
+                    # Use content placeholder for first text element if available
+                    if not content_placeholder_used and hasattr(slide_obj.shapes, 'placeholders'):
+                        content_placeholder_used = self._add_text_to_placeholder(slide_obj, element, config, preserve_colors)
+                    else:
+                        self._add_text_element(slide_obj, element, config, preserve_colors)
                 elif element.element_type == Element_Type.TITLE:
-                    self._add_title_element(slide_obj, element, config, preserve_colors)
+                    # Title elements are handled separately by slide title
+                    pass
                 elif element.element_type == Element_Type.ITEMIZE:
-                    self._add_itemize_element(slide_obj, element, config, preserve_colors)
+                    # Use content placeholder for first itemize if available
+                    if not content_placeholder_used and hasattr(slide_obj.shapes, 'placeholders'):
+                        content_placeholder_used = self._add_itemize_to_placeholder(slide_obj, element, config, preserve_colors)
+                    else:
+                        self._add_itemize_element(slide_obj, element, config, preserve_colors)
                 elif element.element_type == Element_Type.IMAGE and include_images:
-                    self._add_image_element(slide_obj, element, config)
+                    self._add_image_element(slide_obj, element, config, source_path)
                 elif element.element_type == Element_Type.BLOCK:
-                    self._add_block_element(slide_obj, element, config, preserve_colors)
-                # Add more element types as needed
+                    # Use content placeholder for first block if available
+                    if not content_placeholder_used and hasattr(slide_obj.shapes, 'placeholders'):
+                        content_placeholder_used = self._add_block_to_placeholder(slide_obj, element, config, preserve_colors)
+                    else:
+                        self._add_block_element(slide_obj, element, config, preserve_colors)
             except Exception as e:
                 self.logger.warning(f"Failed to add element {element.element_type}: {e}")
 
     def _add_text_element(self, slide_obj, element: Universal_Element,
                           config: Dict[str, Any], preserve_colors: bool):
-        """Add a text element to the slide."""
+        """Add a text element to the slide using its predefined position."""
         content = element.content
         if isinstance(content, str):
             text = content
         else:
             text = content.text
 
-        # Add text as a text box
-        left = Inches(1) if element.position else Inches(1)
-        top = Inches(2) if element.position else Inches(2)
-        width = Inches(8) if element.size else Inches(8)
-        height = Inches(1) if element.size else Inches(1)
+        # Use position from element if available, otherwise fallback
+        if element.position:
+            left = Inches(element.position.x)
+            top = Inches(element.position.y)
+            width = Inches(element.position.width) if element.position.width else Inches(8)
+            height = Inches(element.position.height) if element.position.height else Inches(1.5)
+        else:
+            # Fallback positioning
+            left = Inches(1)
+            top = Inches(2)
+            width = Inches(8)
+            height = Inches(1.5)
 
         text_box = slide_obj.shapes.add_textbox(left, top, width, height)
         text_frame = text_box.text_frame
-        p = text_frame.paragraphs[0]
-        p.text = text
-        p.font.size = config['content_font_size']
+        text_frame.word_wrap = True  # Enable text wrapping
 
-        if preserve_colors:
-            p.font.color.rgb = config['content_color']
+        # Split text by paragraphs and add each as a separate paragraph
+        paragraphs = text.split('\n\n') if '\n\n' in text else [text]
+
+        for i, para_text in enumerate(paragraphs):
+            if i == 0:
+                p = text_frame.paragraphs[0]
+            else:
+                p = text_frame.add_paragraph()
+
+            p.text = para_text.strip()
+
+            # Set font size with proper conversion
+            font_size = config.get('content_font_size', 18)
+            if font_size > 0:
+                p.font.size = Pt(font_size)
+
+            if preserve_colors:
+                p.font.color.rgb = config['content_color']
 
     def _add_title_element(self, slide_obj, element: Universal_Element,
                            config: Dict[str, Any], preserve_colors: bool):
@@ -241,7 +282,10 @@ class PowerPoint_Builder(Base_Builder):
             title_shape.text = text
             if preserve_colors:
                 title_shape.text_frame.paragraphs[0].font.color.rgb = config['title_color']
-                title_shape.text_frame.paragraphs[0].font.size = config['title_font_size']
+            # Set font size with proper conversion
+            font_size = config.get('title_font_size', 44)
+            if font_size > 0:
+                title_shape.text_frame.paragraphs[0].font.size = Pt(font_size)
         else:
             # Create new title text box
             left = Inches(1) if element.position else Inches(1)
@@ -253,7 +297,10 @@ class PowerPoint_Builder(Base_Builder):
             title_frame = title_box.text_frame
             p = title_frame.paragraphs[0]
             p.text = text
-            p.font.size = config['title_font_size']
+            # Set font size with proper conversion
+            font_size = config.get('title_font_size', 44)
+            if font_size > 0:
+                p.font.size = font_size
             p.font.bold = True
 
             if preserve_colors:
@@ -261,7 +308,7 @@ class PowerPoint_Builder(Base_Builder):
 
     def _add_itemize_element(self, slide_obj, element: Universal_Element,
                            config: Dict[str, Any], preserve_colors: bool):
-        """Add a bullet list element to the slide."""
+        """Add a bullet list element to the slide using its predefined position."""
         content = element.content
         if isinstance(content, dict) and 'items' in content:
             items = content['items']
@@ -269,11 +316,20 @@ class PowerPoint_Builder(Base_Builder):
             # Try to parse as string
             items = [str(content)]
 
-        left = Inches(1) if element.position else Inches(1)
-        top = Inches(2) if element.position else Inches(2)
-        width = Inches(8) if element.size else Inches(8)
+        # Use position from element if available, otherwise fallback
+        if element.position:
+            left = Inches(element.position.x)
+            top = Inches(element.position.y)
+            width = Inches(element.position.width) if element.position.width else Inches(8)
+            height = Inches(element.position.height) if element.position.height else Inches(max(0.5, len(items) * 0.4))
+        else:
+            # Fallback positioning
+            left = Inches(1)
+            top = Inches(2)
+            width = Inches(8)
+            height = Inches(max(0.5, len(items) * 0.4))
 
-        text_box = slide_obj.shapes.add_textbox(left, top, width, Inches(len(items) * 0.5))
+        text_box = slide_obj.shapes.add_textbox(left, top, width, height)
         text_frame = text_box.text_frame
 
         for i, item in enumerate(items):
@@ -283,15 +339,18 @@ class PowerPoint_Builder(Base_Builder):
                 p = text_frame.paragraphs[0]
 
             p.text = f"• {item}"
-            p.level = element.level
-            p.font.size = config['content_font_size']
+            p.level = element.level if hasattr(element, 'level') else 0
+            # Set font size with proper conversion
+            font_size = config.get('content_font_size', 18)
+            if font_size > 0:
+                p.font.size = Pt(font_size)
 
             if preserve_colors:
                 p.font.color.rgb = config['content_color']
 
     def _add_image_element(self, slide_obj, element: Universal_Element,
-                          config: Dict[str, Any]):
-        """Add an image element to the slide."""
+                          config: Dict[str, Any], source_path: str = '', current_top = Inches(2)):
+        """Add an image element to the slide and return the new top position."""
         content = element.content
         if isinstance(content, dict) and 'path' in content:
             image_path = content['path']
@@ -301,24 +360,35 @@ class PowerPoint_Builder(Base_Builder):
         try:
             # Convert relative paths to absolute
             if not Path(image_path).is_absolute():
-                # Assume relative to current working directory
-                image_path = Path.cwd() / image_path
+                if source_path:
+                    # Resolve relative to source document directory
+                    source_dir = Path(source_path).parent
+                    image_path = source_dir / image_path
+                else:
+                    # Fallback to current working directory
+                    image_path = Path.cwd() / image_path
 
             if Path(image_path).exists():
                 left = Inches(1) if element.position else Inches(1)
-                top = Inches(2) if element.position else Inches(2)
+                top = current_top
                 width = Inches(6) if element.size else Inches(6)
                 height = Inches(4) if element.size else None
 
-                slide_obj.shapes.add_picture(image_path, left, top, width, height)
+                slide_obj.shapes.add_picture(str(image_path), left, top, width, height)
+
+                # Return the new top position (below this image)
+                image_height = height if height else Inches(4)
+                return top + image_height
             else:
                 self.logger.warning(f"Image file not found: {image_path}")
+                return current_top
         except Exception as e:
             self.logger.warning(f"Failed to add image {image_path}: {e}")
+            return current_top
 
     def _add_block_element(self, slide_obj, element: Universal_Element,
-                          config: Dict[str, Any], preserve_colors: bool):
-        """Add a block/quote element to the slide."""
+                          config: Dict[str, Any], preserve_colors: bool, current_top):
+        """Add a block/quote element to the slide and return the new top position."""
         content = element.content
         if isinstance(content, str):
             text = content
@@ -326,7 +396,7 @@ class PowerPoint_Builder(Base_Builder):
             text = str(content)
 
         left = Inches(1) if element.position else Inches(1)
-        top = Inches(2) if element.position else Inches(2)
+        top = current_top
         width = Inches(8) if element.size else Inches(8)
         height = Inches(1) if element.size else Inches(1)
 
@@ -334,8 +404,120 @@ class PowerPoint_Builder(Base_Builder):
         text_frame = text_box.text_frame
         p = text_frame.paragraphs[0]
         p.text = text
-        p.font.size = config['content_font_size']
+
+        # Set font size with proper conversion
+        font_size = config.get('content_font_size', 18)
+        if font_size > 0:
+            p.font.size = Pt(font_size)
         p.font.italic = True
 
         if preserve_colors:
             p.font.color.rgb = config['content_color']
+
+        # Return the new top position (below this element)
+        return top + height
+
+    def _add_text_to_placeholder(self, slide_obj, element: Universal_Element,
+                                config: Dict[str, Any], preserve_colors: bool) -> bool:
+        """Add text to the slide's content placeholder. Returns True if successful."""
+        try:
+            # Find the content placeholder (usually placeholder index 1)
+            for placeholder in slide_obj.placeholders:
+                if placeholder.placeholder_format.type == 1:  # Body placeholder
+                    content = element.content
+                    if isinstance(content, str):
+                        text = content
+                    else:
+                        text = content.text
+
+                    placeholder.text = text
+
+                    # Apply formatting to the placeholder
+                    text_frame = placeholder.text_frame
+                    for paragraph in text_frame.paragraphs:
+                        # Set font size with proper conversion
+                        font_size = config.get('content_font_size', 18)
+                        if font_size > 0:
+                            paragraph.font.size = Pt(font_size)
+
+                        if preserve_colors:
+                            paragraph.font.color.rgb = config['content_color']
+
+                    return True
+        except Exception as e:
+            self.logger.warning(f"Failed to use content placeholder: {e}")
+
+        return False
+
+    def _add_itemize_to_placeholder(self, slide_obj, element: Universal_Element,
+                                    config: Dict[str, Any], preserve_colors: bool) -> bool:
+        """Add itemize to the slide's content placeholder. Returns True if successful."""
+        try:
+            # Find the content placeholder
+            for placeholder in slide_obj.placeholders:
+                if placeholder.placeholder_format.type == 1:  # Body placeholder
+                    content = element.content
+                    if isinstance(content, dict) and 'items' in content:
+                        items = content['items']
+                    else:
+                        items = [str(content)]
+
+                    text_frame = placeholder.text_frame
+                    text_frame.clear()  # Clear existing content
+
+                    for i, item in enumerate(items):
+                        if i > 0:
+                            p = text_frame.add_paragraph()
+                        else:
+                            p = text_frame.paragraphs[0]
+
+                        p.text = f"• {item}"
+                        p.level = element.level if hasattr(element, 'level') else 0
+
+                        # Set font size with proper conversion
+                        font_size = config.get('content_font_size', 18)
+                        if font_size > 0:
+                            p.font.size = Pt(font_size)
+
+                        if preserve_colors:
+                            p.font.color.rgb = config['content_color']
+
+                    return True
+        except Exception as e:
+            self.logger.warning(f"Failed to use content placeholder for itemize: {e}")
+
+        return False
+
+    def _add_block_to_placeholder(self, slide_obj, element: Universal_Element,
+                                config: Dict[str, Any], preserve_colors: bool) -> bool:
+        """Add block to the slide's content placeholder. Returns True if successful."""
+        try:
+            # Find the content placeholder
+            for placeholder in slide_obj.placeholders:
+                if placeholder.placeholder_format.type == 1:  # Body placeholder
+                    content = element.content
+                    if isinstance(content, str):
+                        text = content
+                    else:
+                        text = str(content)
+
+                    placeholder.text = text
+
+                    # Apply formatting to the placeholder
+                    text_frame = placeholder.text_frame
+                    for paragraph in text_frame.paragraphs:
+                        # Set font size with proper conversion
+                        font_size = config.get('content_font_size', 18)
+                        if font_size > 0:
+                            paragraph.font.size = Pt(font_size)
+
+                        paragraph.font.italic = True
+
+                        if preserve_colors:
+                            paragraph.font.color.rgb = config['content_color']
+
+                    return True
+        except Exception as e:
+            self.logger.warning(f"Failed to use content placeholder for block: {e}")
+
+        return False

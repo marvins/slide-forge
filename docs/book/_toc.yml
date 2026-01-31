@@ -15,6 +15,11 @@
 - part: Reference
   chapters:
     - file: reference/class-diagrams
+    - file: reference/sequence-diagrams
+
+- part: Design
+  chapters:
+    - file: design-notes
 
 - file: contributing
   title: Contributing

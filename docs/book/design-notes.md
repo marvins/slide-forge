@@ -1,4 +1,6 @@
-# Slide Forge Design
+# Design Notes
+
+This page contains the original design documentation and architectural decisions for Slide Forge.
 
 ## Overview
 
