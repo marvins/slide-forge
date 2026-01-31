@@ -14,7 +14,7 @@ site:
   options:
     # favicon: favicon.ico
     # logo: site_logo.png
-    base_url: /slide-forge/
+    base_url: /
   nav:
     - title: Introduction
       url: /intro
