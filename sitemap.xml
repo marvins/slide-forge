@@ -23,6 +23,9 @@
     <loc>http://localhost:3000/design-notes</loc>
   </url>
   <url>
+    <loc>http://localhost:3000/equation-rendering</loc>
+  </url>
+  <url>
     <loc>http://localhost:3000/todo</loc>
   </url>
 </urlset>
