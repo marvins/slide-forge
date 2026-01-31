@@ -11,12 +11,6 @@ Slide Forge is a Python library for creating PowerPoint presentations. It is a w
 1. Use python-pptx for PowerPoint creation
 2. Input is a Tex file, with Beamer class.
 
-## Questions for Cascade
-
-1. What's the best workflow for LaTeX → PowerPoint conversion?
-2. Should we use AST-like parsing or template-based approach?
-3. How do we handle complex LaTeX structures?
-
 ## Current Workflow
 
 ### Phase 1: LaTeX Parsing ✅ COMPLETED
