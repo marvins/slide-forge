@@ -38,7 +38,8 @@ class LaTeX_Parser(Base_Parser):
 
     def __init__(self):
         """Initialize LaTeX parser."""
-        self.frame_pattern = re.compile(r'\\begin\{frame\}(.*?)(?=\\end\{frame\}|\\begin\{frame\}|$)', re.DOTALL | re.IGNORECASE)
+        # Pattern to match \begin{frame}{optional title} ... \end{frame}
+        self.frame_pattern = re.compile(r'\\begin\{frame\}(?:\{([^}]*)\})?\s*(.*?)(?=\\end\{frame\}|\\begin\{frame\}|$)', re.DOTALL | re.IGNORECASE)
         self.title_pattern = re.compile(r'\\frametitle\{([^}]+)\}', re.IGNORECASE)
         self.itemize_pattern = re.compile(r'\\item\s+(.+)', re.IGNORECASE)
         self.includegraphics_pattern = re.compile(r'\\includegraphics(?:\[[^\]]*\])\{([^}]+)\}', re.IGNORECASE)
@@ -123,24 +124,30 @@ class LaTeX_Parser(Base_Parser):
 
         frame_number = 1
         for match in frame_matches:
-            frame_content = match.group(1)
-            frame = self._parse_frame(frame_content, frame_number)
+            frame_title = match.group(1)  # Title from \begin{frame}{title}
+            frame_content = match.group(2)  # Frame content
+            frame = self._parse_frame(frame_content, frame_number, frame_title)
             document.add_frame(frame)
             frame_number += 1
 
-    def _parse_frame(self, frame_content: str, frame_number: int) -> Universal_Frame:
+    def _parse_frame(self, frame_content: str, frame_number: int, frame_title: str = None) -> Universal_Frame:
         """Parse a single frame."""
         frame = Universal_Frame(frame_number=frame_number)
 
-        # Extract frame title
-        title_match = self.title_pattern.search(frame_content)
-        if title_match:
-            frame.title = title_match.group(1).strip()
+        # Set title from \begin{frame}{title} if available
+        if frame_title and frame_title.strip():
+            frame.title = frame_title.strip()
             frame.layout = Layout_Type.TITLE_AND_CONTENT
         else:
-            # Check if this might be a title slide
-            if frame_number == 1 and '\\titlepage' in frame_content:
-                frame.layout = Layout_Type.TITLE_SLIDE
+            # Extract frame title from \frametitle command
+            title_match = self.title_pattern.search(frame_content)
+            if title_match:
+                frame.title = title_match.group(1).strip()
+                frame.layout = Layout_Type.TITLE_AND_CONTENT
+            else:
+                # Check if this might be a title slide
+                if frame_number == 1 and '\\titlepage' in frame_content:
+                    frame.layout = Layout_Type.TITLE_SLIDE
 
         # Parse elements
         elements = self._parse_elements(frame_content, frame.layout)
@@ -156,17 +163,34 @@ class LaTeX_Parser(Base_Parser):
 
         current_itemize = []
         in_itemize = False
+        in_equation = False
+        equation_lines = []
+        current_text = []
 
         for line in lines:
             line = line.strip()
             if not line or line.startswith('%'):
                 continue
 
+            # Skip frametitle commands as they're handled separately
+            if line.startswith('\\frametitle'):
+                continue
+
             # Handle itemize environments
             if line.startswith('\\begin{itemize}') or line.startswith(r'\begin{itemize}'):
+                # Flush any accumulated text
+                if current_text:
+                    text_content = ' '.join(current_text)
+                    elements.append(create_text_element(text_content))
+                    current_text = []
                 in_itemize = True
                 continue
             elif line.startswith('\\end{itemize}') or line.startswith(r'\end{itemize}'):
+                # Flush any accumulated text
+                if current_text:
+                    text_content = ' '.join(current_text)
+                    elements.append(create_text_element(text_content))
+                    current_text = []
                 if current_itemize:
                     elements.append(create_itemize_element(current_itemize))
                     current_itemize = []
@@ -178,27 +202,62 @@ class LaTeX_Parser(Base_Parser):
                     current_itemize.append(item_match.group(1).strip())
                 continue
 
+            # Handle multi-line display equations
+            if '\\\\begin{equation}' in line or '\\begin{equation}' in line:
+                # Flush any accumulated text
+                if current_text:
+                    text_content = ' '.join(current_text)
+                    elements.append(create_text_element(text_content))
+                    current_text = []
+                in_equation = True
+                equation_lines = []
+                continue
+
+            if '\\\\end{equation}' in line or '\\end{equation}' in line:
+                if in_equation:
+                    equation_content = '\n'.join(equation_lines)
+                    equation_text = equation_content.strip()
+                    if equation_text:
+                        elements.append(create_equation_element(equation_text, 'display'))
+                    in_equation = False
+                    equation_lines = []
+                continue
+
+            if in_equation:
+                equation_lines.append(line)
+                continue
+
             # Handle includegraphics
             img_match = self.includegraphics_pattern.search(line)
             if img_match:
+                # Flush any accumulated text
+                if current_text:
+                    text_content = ' '.join(current_text)
+                    elements.append(create_text_element(text_content))
+                    current_text = []
                 img_path = img_match.group(1).strip()
                 elements.append(create_image_element(img_path))
                 continue
 
-            # Handle equations
+            # Handle inline equations - extract equation but keep surrounding text
             inline_eq_match = self.inline_equation_pattern.search(line)
             if inline_eq_match:
-                equation_text = inline_eq_match.group(1).strip()
-                elements.append(create_equation_element(equation_text, 'inline'))
+                # Split the line into text and equation parts
+                parts = self.inline_equation_pattern.split(line)
+                for i, part in enumerate(parts):
+                    if part.strip():  # Non-empty text part
+                        if i % 2 == 0:  # Text part
+                            current_text.append(part.strip())
+                        else:  # Equation part
+                            # Flush any accumulated text first
+                            if current_text:
+                                text_content = ' '.join(current_text)
+                                elements.append(create_text_element(text_content))
+                                current_text = []
+                            elements.append(create_equation_element(part.strip(), 'inline'))
                 continue
 
-            display_eq_match = self.display_equation_pattern.search(line)
-            if display_eq_match:
-                equation_text = display_eq_match.group(1).strip()
-                elements.append(create_equation_element(equation_text, 'display'))
-                continue
-
-            # Handle text content
+            # Handle text content - accumulate consecutive text lines
             # Skip frametitle lines since they're already extracted as frame titles
             if self.title_pattern.search(line):
                 continue
@@ -208,10 +267,11 @@ class LaTeX_Parser(Base_Parser):
             clean_line = re.sub(r'[{}]', '', clean_line).strip()
 
             if clean_line and not clean_line.startswith('\\'):
-                if layout == Layout_Type.TITLE_SLIDE and not elements:
-                    # First text on title slide might be the title
-                    elements.append(create_text_element(clean_line, Element_Type.TITLE))
-                else:
-                    elements.append(create_text_element(clean_line, Element_Type.TEXT))
+                current_text.append(clean_line)
+
+        # Flush any remaining text
+        if current_text:
+            text_content = ' '.join(current_text)
+            elements.append(create_text_element(text_content))
 
         return elements

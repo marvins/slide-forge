@@ -354,7 +354,7 @@ class TestUniversalModels:
         """Test Element_Type enum values."""
         assert Element_Type.TEXT.value == "text"
         assert Element_Type.TITLE.value == "title"
-        assert Element_TYPE.SUBTITLE.value == "subtitle"
+        assert Element_Type.SUBTITLE.value == "subtitle"
         assert Element_Type.ITEMIZE.value == "itemize"
         assert Element_Type.ENUMERATE.value == "enumerate"
         assert Element_Type.BLOCK.value == "block"

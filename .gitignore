@@ -6,3 +6,4 @@ venv
 _build
 *.egg-info/
 output/
+.equation_cache

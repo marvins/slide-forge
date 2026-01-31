@@ -3,10 +3,10 @@
 Quick demo of Slide Forge API
 """
 
-from slideforge import SlideForge
+from slideforge import Slide_Forge
 
 # Simple conversion
-forge = SlideForge()
+forge = Slide_Forge()
 success = forge.convert_file(
     "latex/presentation.tex",
     "latex/slideforge_output.pptx"

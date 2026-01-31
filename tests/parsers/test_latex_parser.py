@@ -71,7 +71,7 @@ class TestLatexParser:
 \end{frame}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
 
         assert document.source_format == 'latex'
         assert len(document.frames) == 1
@@ -84,7 +84,7 @@ class TestLatexParser:
 
         element = frame.elements[0]
         assert element.element_type == Element_Type.TEXT
-        assert 'This is test content.' in element.content
+        assert 'This is test content.' in element.content.text
 
     def test_parse_itemize_list(self, parser):
         """Test parsing itemize (bullet) lists."""
@@ -98,7 +98,7 @@ class TestLatexParser:
 \end{frame}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
         frame = document.frames[0]
 
         # Should have one itemize element
@@ -121,7 +121,7 @@ class TestLatexParser:
 \end{frame}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
         frame = document.frames[0]
 
         # Should have two equation elements
@@ -149,7 +149,7 @@ class TestLatexParser:
 \end{frame}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
         frame = document.frames[0]
 
         # Should have one equation element
@@ -179,7 +179,7 @@ class TestLatexParser:
 \end{frame}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
         frame = document.frames[0]
 
         # Should have text, itemize, and equation elements
@@ -198,7 +198,7 @@ class TestLatexParser:
 \end{frame}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
         frame = document.frames[0]
 
         assert frame.title == 'Empty Frame'
@@ -216,7 +216,7 @@ class TestLatexParser:
 \end{frame}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
 
         assert len(document.frames) == 2
         assert document.frames[0].title == 'First Frame'
@@ -237,7 +237,7 @@ class TestLatexParser:
 \end{document}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
 
         assert document.metadata.title == 'My Presentation'
         assert document.metadata.author == 'John Doe'
@@ -253,14 +253,14 @@ class TestLatexParser:
 \end{frame}
 """
 
-        document = parser.parse_string(latex_content, 'test.tex')
+        document = parser.parse_string(latex_content, source_path='test.tex')
         frame = document.frames[0]
 
         text_elements = [e for e in frame.elements if e.element_type == Element_Type.TEXT]
         # Should only have one text element (not counting the frametitle)
         assert len(text_elements) == 1
-        assert 'This should be the only text element.' in text_elements[0].content
-        assert 'This should not create duplicate text.' in text_elements[0].content
+        assert 'This should be the only text element.' in text_elements[0].content.text
+        assert 'This should not create duplicate text.' in text_elements[0].content.text
 
     def test_get_supported_extensions(self, parser):
         """Test supported file extensions."""

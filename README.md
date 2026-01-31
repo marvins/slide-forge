@@ -224,6 +224,78 @@ jupyter-book start  # Serve on http://localhost:3000
 - ✅ **Broken link detection**
 - ✅ **Coverage verification**
 
+## TODO
+
+### High Priority
+
+- [ ] **Improve itemize parsing to handle inline equations within items**
+  - Currently: `$x^2 + y^2 = z^2$` inside `\item` is treated as plain text
+  - Should: Extract inline equations from itemize list items
+  - Location: `src/slideforge/parsers/latex_parser.py`
+  - Test: `tests/parsers/test_latex_parser_itemize_equations.py`
+
+### Medium Priority
+
+- [ ] **Handle enumerate (numbered) lists**
+  - Currently: Only itemize (bullet) lists are supported
+  - Should: Parse `\begin{enumerate}...\end{enumerate}` environments
+  - Location: `src/slideforge/parsers/latex_parser.py`
+
+- [ ] **Improve text cleaning and LaTeX command removal**
+  - Currently: Basic regex-based cleaning
+  - Should: More sophisticated handling of nested commands and formatting
+  - Location: `src/slideforge/parsers/latex_parser.py`
+
+- [ ] **Add support for table environments**
+  - Currently: Tables are not parsed
+  - Should: Extract table structure and content
+  - Location: `src/slideforge/parsers/latex_parser.py`
+
+### Low Priority
+
+- [ ] **Add support for figure environments**
+  - Currently: `\includegraphics` is basic
+  - Should: Full figure environment parsing with captions
+  - Location: `src/slideforge/parsers/latex_parser.py`
+
+- [ ] **Handle special LaTeX environments**
+  - Currently: Limited environment support
+  - Should: Support for theorem, proof, definition environments
+  - Location: `src/slideforge/parsers/latex_parser.py`
+
+### Test Infrastructure
+
+- [ ] **Add more edge case test files**
+  - Special characters in math mode
+  - Unicode content in various contexts
+  - Malformed nested environments
+  - Location: `tests/parsers/test_data/edge_cases/`
+
+- [ ] **Create performance tests**
+  - Large document parsing
+  - Memory usage with complex equations
+  - Location: `tests/performance/`
+
+### Equation Rendering System
+
+- [ ] **Review and improve equation cache system**
+  - Currently: Creates standalone LaTeX docs in `.equation_cache/`
+  - Location: `src/slideforge/builders/powerpoint_builder.py` (lines 570-600)
+  - Consider: Cache cleanup, error handling, performance optimization
+  - Test: Verify equation rendering works with complex math expressions
+
+### Code Quality
+
+- [ ] **Add type hints throughout parser**
+  - Currently: Partial type hints
+  - Should: Complete type annotation
+  - Location: `src/slideforge/parsers/latex_parser.py`
+
+- [ ] **Improve error handling**
+  - Currently: Basic exception handling
+  - Should: More specific error types and recovery strategies
+  - Location: `src/slideforge/parsers/latex_parser.py`
+
 ## Contributing
 
 Contributions welcome! Please see our [contributing guidelines](CONTRIBUTING.md).

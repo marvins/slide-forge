@@ -1,0 +1,96 @@
+{
+  "basic": [
+    {
+      "file": "simple_frame.tex",
+      "description": "Basic frame with title and content",
+      "expected_frames": 1,
+      "expected_elements": {"text": 1},
+      "expected_title": "Test Frame Title"
+    },
+    {
+      "file": "multiple_frames.tex",
+      "description": "Multiple frames in document",
+      "expected_frames": 2,
+      "expected_elements": {"text": 2}
+    },
+    {
+      "file": "empty_frame.tex",
+      "description": "Frame with no content",
+      "expected_frames": 1,
+      "expected_elements": {},
+      "expected_title": "Empty Frame"
+    }
+  ],
+  "equations": [
+    {
+      "file": "inline_equations.tex",
+      "description": "Frame with inline math equations",
+      "expected_elements": {"text": 2, "equation": 2},
+      "equation_types": ["inline", "inline"]
+    },
+    {
+      "file": "display_equations.tex",
+      "description": "Frame with display math equations",
+      "expected_elements": {"text": 1, "equation": 1},
+      "equation_types": ["display"]
+    },
+    {
+      "file": "mixed_equations.tex",
+      "description": "Frame with both inline and display equations",
+      "expected_elements": {"text": 2, "itemize": 1, "equation": 1},
+      "equation_types": ["display"]
+    }
+  ],
+  "formatting": [
+    {
+      "file": "itemize_lists.tex",
+      "description": "Frame with bullet point lists",
+      "expected_elements": {"text": 1, "itemize": 1}
+    },
+    {
+      "file": "enumerate_lists.tex",
+      "description": "Frame with numbered lists",
+      "expected_elements": {"text": 1, "enumerate": 1}
+    },
+    {
+      "file": "text_formatting.tex",
+      "description": "Frame with various text formatting",
+      "expected_elements": {"text": 3}
+    }
+  ],
+  "complex": [
+    {
+      "file": "nested_environments.tex",
+      "description": "Frame with nested LaTeX environments",
+      "expected_elements": {"text": 2, "itemize": 1}
+    },
+    {
+      "file": "tables.tex",
+      "description": "Frame with table content",
+      "expected_elements": {"text": 1, "table": 1}
+    },
+    {
+      "file": "figures.tex",
+      "description": "Frame with image content",
+      "expected_elements": {"text": 1, "image": 1}
+    }
+  ],
+  "edge_cases": [
+    {
+      "file": "malformed_latex.tex",
+      "description": "Frame with malformed LaTeX syntax",
+      "expected_elements": {"text": 2},
+      "should_parse": true
+    },
+    {
+      "file": "special_characters.tex",
+      "description": "Frame with special characters and symbols",
+      "expected_elements": {"text": 2}
+    },
+    {
+      "file": "unicode_content.tex",
+      "description": "Frame with Unicode characters",
+      "expected_elements": {"text": 2}
+    }
+  ]
+}
