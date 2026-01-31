@@ -20,6 +20,7 @@
 - part: Design
   chapters:
     - file: design-notes
+    - file: todo
 
 - file: contributing
   title: Contributing
