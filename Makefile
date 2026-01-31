@@ -14,10 +14,10 @@ GLOSSARY_ENGINE = makeglossaries
 # Find all .tex files in the current directory and subdirectories
 TEX_FILES := $(wildcard **/*.tex *.tex)
 # Get the main .tex file (prefer pptx/ directory)
-MAIN_TEX := $(firstword $(wildcard pptx/*.tex))
+MAIN_TEX = $(firstword $(wildcard pptx/*.tex))
 # Fallback to any .tex file if none in pptx/
 ifeq ($(MAIN_TEX),)
-    MAIN_TEX := $(firstword $(TEX_FILES))
+    MAIN_TEX = $(firstword $(TEX_FILES))
 endif
 # Default main file if no .tex files found
 ifeq ($(MAIN_TEX),)
@@ -59,7 +59,12 @@ $(BUILD_DIR) $(OUTPUT_DIR):
 	@mkdir -p $@
 
 # PDF compilation with specified engine
-pdf: $(BUILD_DIR) $(OUTPUT_DIR)
+pdf: $(BUILD_DIR) $(OUTPUT_DIR) convert-tex
+	@$(eval MAIN_TEX := $(firstword $(wildcard pptx/*.tex)))
+	@if [ -z "$(MAIN_TEX)" ]; then \
+		echo "No .tex file found in pptx/ directory"; \
+		exit 1; \
+	fi
 	@echo "Building $(MAIN_TEX) with $(LATEX_ENGINE)..."
 	@cp pptx/*.png $(BUILD_DIR)/ 2>/dev/null || true
 	@cd $(BUILD_DIR) && $(LATEX_ENGINE) $(LATEX_FLAGS) ../$(MAIN_TEX)
@@ -102,6 +107,7 @@ clean:
 	@rm -f *.synctex.gz *.figlist *.makefile *.fls *.fdb_latexmk *.auxlock
 	@rm -f *.acn *.acr *.alg *.glg *.glo *.gls *.glsdefs *.ist *.xdy
 	@rm -f slide_*.png
+	@rm -f pptx/*.tex pptx/*.md pptx/*.png
 	@find . -name "*.aux" -delete
 	@find . -name "*.log" -delete
 	@find . -name "*.out" -delete

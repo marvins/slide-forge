@@ -64,14 +64,54 @@ class PresentationConverter:
                 markdown_content.append(f"\n# Slide {i + 1}\n")
 
             for shape in slide.shapes:
-                if hasattr(shape, "text") and shape.text.strip():
-                    # Clean up text and add to markdown
-                    text = shape.text.strip()
-                    # Simple heuristic for headers vs content
-                    if len(text) < 50 and '\n' not in text:
-                        markdown_content.append(f"## {text}\n")
-                    else:
-                        markdown_content.append(f"{text}\n")
+                if hasattr(shape, "text_frame") and shape.text_frame:
+                    # Process each paragraph in the text frame
+                    for paragraph in shape.text_frame.paragraphs:
+                        if not paragraph.text.strip():
+                            continue
+
+                        text = paragraph.text.strip()
+
+                        # Detect indentation level for bullet points
+                        indent_level = paragraph.level if hasattr(paragraph, 'level') else 0
+
+                        # Check if this is a bullet point using multiple methods
+                        is_bullet = False
+                        if hasattr(paragraph, 'paragraph_format') and paragraph.paragraph_format:
+                            # PowerPoint uses bullet property
+                            try:
+                                bullet_type = paragraph.paragraph_format.bullet.type
+                                is_bullet = bullet_type != 0  # Not None
+                            except:
+                                is_bullet = False
+
+                        # Fallback: check if text starts with bullet characters
+                        if not is_bullet and text:
+                            bullet_chars = ['•', '·', '‣', '○', '●', '-', '*', '→']
+                            is_bullet = any(text.strip().startswith(char) for char in bullet_chars)
+
+                        # Another fallback: check indentation + common patterns
+                        if not is_bullet and indent_level > 0:
+                            # Indented text is likely a bullet in PowerPoint
+                            is_bullet = True
+
+                        # Format based on type and indentation
+                        if is_bullet:
+                            # Create bullet with proper indentation
+                            bullet_prefix = "  " * indent_level + "* "
+                            markdown_content.append(f"{bullet_prefix}{text}")
+                        elif indent_level > 0:
+                            # Indented text without bullet
+                            indent_prefix = "  " * indent_level
+                            markdown_content.append(f"{indent_prefix}{text}")
+                        elif len(text) < 50 and '\n' not in text and i == 0 and len(markdown_content) < 10:
+                            # Likely a title
+                            markdown_content.append(f"## {text}")
+                        else:
+                            # Regular text
+                            markdown_content.append(f"{text}")
+
+                    markdown_content.append("")  # Add spacing between shapes
 
                 # Handle images
                 if shape.shape_type == 13:  # Picture
