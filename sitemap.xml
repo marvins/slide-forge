@@ -16,4 +16,10 @@
   <url>
     <loc>http://localhost:3000/class-diagrams</loc>
   </url>
+  <url>
+    <loc>http://localhost:3000/sequence-diagrams</loc>
+  </url>
+  <url>
+    <loc>http://localhost:3000/design-notes</loc>
+  </url>
 </urlset>
