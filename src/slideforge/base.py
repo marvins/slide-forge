@@ -24,7 +24,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from .models.universal import Universal_Document, Conversion_Options, Slide_Structure
+from .models.universal import Universal_Document, Conversion_Options, Universal_Frame
 
 
 class Base_Parser(ABC):
@@ -94,13 +94,13 @@ class Base_Builder(ABC):
     """Abstract base class for output format builders."""
 
     @abstractmethod
-    def build_presentation(self, slides: list[Slide_Structure],
+    def build_presentation(self, slides: list[Universal_Frame],
                           output_file: Path, **kwargs) -> bool:
         """
         Build a presentation from slide structures.
 
         Args:
-            slides: List of Slide_Structure objects
+            slides: List of Universal_Frame objects
             output_file: Path to output file
             **kwargs: Additional build options
 
@@ -149,8 +149,8 @@ class Base_Mapper(ABC):
     """Abstract base class for content mapping between formats."""
 
     @abstractmethod
-    def map_document(self, document: Document, target_format: str,
-                   **kwargs) -> list[Slide_Structure]:
+    def map_document(self, document: Universal_Document, target_format: str,
+                   **kwargs) -> list[Universal_Frame]:
         """
         Map a Document to Slide_Structure list for target format.
 
@@ -160,7 +160,7 @@ class Base_Mapper(ABC):
             **kwargs: Additional mapping options
 
         Returns:
-            List of Slide_Structure objects
+            List of Universal_Frame objects
 
         Raises:
             MappingError: If mapping fails
