@@ -24,7 +24,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from pathlib import Path
 
-from .models.universal import Universal_Document, Conversion_Options
+from .models.universal import Universal_Document, Conversion_Options, Slide_Structure
 
 
 class Base_Parser(ABC):
