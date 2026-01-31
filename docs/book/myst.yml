@@ -9,29 +9,34 @@ project:
     - name: Slide Forge Team
   github: https://github.com/marvins/slide-forge
   # To autogenerate a Table of Contents, run "jupyter book init --write-toc"
+# Site branding configuration
 site:
   template: book-theme
   options:
     # favicon: favicon.ico
     # logo: site_logo.png
     base_url: /slide-forge/
-  nav:
-    - title: Introduction
-      url: /intro
-    - title: Installation
-      url: /installation
-    - title: Quick Start
-      url: /quickstart
-    - title: API Reference
-      children:
-        - title: Auto-Generated API
-          url: /api/auto
-    - title: Reference
-      children:
-        - title: Class Diagrams
-          url: /reference/class-diagrams
-        - title: Sequence Diagrams
-          url: /reference/sequence-diagrams
+    nav:
+      - title: Introduction
+        url: /intro
+      - title: Installation
+        url: /installation
+      - title: Quick Start
+        url: /quickstart
+      - title: API Reference
+        children:
+          - title: Auto-Generated API
+            url: /api/auto
+        - title: Reference
+          children:
+            - title: Class Diagrams
+              url: /reference/class-diagrams
+            - title: Sequence Diagrams
+              url: /reference/sequence-diagrams
+  # Custom branding
+  title: Slide Forge Documentation
+  logo: ""
+  description: Documentation for Slide Forge - LaTeX Beamer to PowerPoint converter
 
 # MyST v2 configuration for autodoc
 parse:
@@ -50,6 +55,12 @@ parse:
     - dollarmath
     - substitution
     - tasklist
+
+# Site branding configuration
+html:
+  theme_options:
+    navbar_title: "Slide Forge"
+    repository_url: https://github.com/marvins/slide-forge
 
 # Sphinx configuration for auto-generated API docs
 sphinx:
