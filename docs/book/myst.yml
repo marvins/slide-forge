@@ -23,14 +23,15 @@ site:
       url: /quickstart
     - title: API Reference
       children:
-        - title: Core API
-          url: /api/core
         - title: Auto-Generated API
           url: /api/auto
     - title: Reference
       children:
         - title: Class Diagrams
           url: /reference/class-diagrams
+
+# Set base URL for GitHub Pages deployment
+base_url: /slide-forge/
 
 # Sphinx configuration for auto-generated API docs
 sphinx:
