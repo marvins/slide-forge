@@ -82,10 +82,28 @@ pytest
 ### Code Quality
 
 ```bash
+# Install pre-commit hooks (recommended)
+pre-commit install
+
+# Run checks manually
+pre-commit run --all-files
+
+# Individual tools
 black src/
 flake8 src/
 mypy src/
 ```
+
+### Pre-commit Hooks
+
+This project uses pre-commit hooks to enforce code quality:
+
+- **License header check** - Ensures all Python files have the proper MIT license header
+- **Black formatting** - Automatic code formatting
+- **Flake8 linting** - Code style checks
+- **MyPy type checking** - Static type analysis
+
+The hooks will automatically run before each commit. If they fail, the commit will be blocked until issues are resolved.
 
 ## Architecture
 

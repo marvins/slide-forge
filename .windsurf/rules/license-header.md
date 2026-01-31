@@ -85,12 +85,49 @@ class LaTeX_Parser:
 - All `.py` files in `tests/`
 - All `.py` files in `scripts/`
 - All `.py` files in `tools/`
+- All `.sh` files in `scripts/`
+- All `.sh` files in `tools/`
 
 ### ❌ Exceptions
 - `__init__.py` files (use minimal header or just copyright line)
 - Configuration files that don't contain code
 - Generated files
 - Temporary files
+
+## Bash Script Header Format
+
+For bash scripts, the license header should come **after** the shebang line:
+
+```bash
+#!/bin/bash
+
+# Copyright (c) 2026 Slide Forge Team
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# Development Setup Script for Slide Forge
+# This script sets up the development environment with pre-commit hooks
+
+set -e
+```
+
+**Note**: The license header content is **identical** for both Python and Bash files. The only difference is that Bash scripts include a shebang line (`#!/bin/bash`) before the header.
 
 ## Enforcement
 

@@ -35,6 +35,7 @@ class Element_Type(Enum):
     ENUMERATE = "enumerate"
     BLOCK = "block"
     IMAGE = "image"
+    EQUATION = "equation"
     TABLE = "table"
     MATH = "math"
     CODE = "code"
@@ -103,7 +104,7 @@ class Universal_Element:
     level: int = 0  # For nested elements like itemize
     style: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_text_content(self) -> Optional[Text_Content]:
         """Convert content to Text_Content if possible."""
         if isinstance(self.content, str):
@@ -124,15 +125,15 @@ class Universal_Frame:
     background_color: Optional[str] = None
     notes: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def add_element(self, element: Universal_Element) -> None:
         """Add an element to the frame."""
         self.elements.append(element)
-    
+
     def get_elements_by_type(self, element_type: Element_Type) -> List[Universal_Element]:
         """Get all elements of a specific type."""
         return [elem for elem in self.elements if elem.element_type == element_type]
-    
+
     def get_text_elements(self) -> List[Universal_Element]:
         """Get all text-based elements."""
         text_types = [Element_Type.TEXT, Element_Type.TITLE, Element_Type.SUBTITLE]
@@ -163,22 +164,22 @@ class Universal_Document:
     source_format: Optional[str] = None  # 'latex', 'pptx', etc.
     source_path: Optional[Path] = None
     global_settings: Dict[str, Any] = field(default_factory=dict)
-    
+
     def add_frame(self, frame: Universal_Frame) -> None:
         """Add a frame to the document."""
         self.frames.append(frame)
-    
+
     def get_frame_by_number(self, frame_number: int) -> Optional[Universal_Frame]:
         """Get a frame by its number."""
         for frame in self.frames:
             if frame.frame_number == frame_number:
                 return frame
         return None
-    
+
     def get_total_frames(self) -> int:
         """Get total number of frames."""
         return len(self.frames)
-    
+
     def get_title_frame(self) -> Optional[Universal_Frame]:
         """Get the title frame (usually first frame with title)."""
         for frame in self.frames:
@@ -199,7 +200,7 @@ class Conversion_Options:
     verbose: bool = False
     output_format: Optional[str] = None
     custom_settings: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for easy serialization."""
         return {
@@ -217,14 +218,14 @@ class Conversion_Options:
 
 # Utility functions for working with universal models
 
-def create_text_element(text: str, element_type: Element_Type = Element_Type.TEXT, 
+def create_text_element(text: str, element_type: Element_Type = Element_Type.TEXT,
                        formatting: List[Formatting] = None) -> Universal_Element:
     """Create a text element with optional formatting."""
     content = Text_Content(text=text, formatting=formatting or [])
     return Universal_Element(element_type=element_type, content=content)
 
 
-def create_image_element(image_path: str, caption: str = None, 
+def create_image_element(image_path: str, caption: str = None,
                         position: Position = None, size: Size = None) -> Universal_Element:
     """Create an image element."""
     content = {'path': image_path, 'caption': caption}
@@ -246,17 +247,29 @@ def create_itemize_element(items: List[str], level: int = 0) -> Universal_Elemen
     )
 
 
+def create_equation_element(latex: str, equation_type: str = 'inline') -> Universal_Element:
+    """Create an equation element with LaTeX content."""
+    content = {
+        'latex': latex,
+        'type': equation_type  # 'inline' or 'display'
+    }
+    return Universal_Element(
+        element_type=Element_Type.EQUATION,
+        content=content
+    )
+
+
 def merge_documents(doc1: Universal_Document, doc2: Universal_Document) -> Universal_Document:
     """Merge two universal documents."""
     merged = Universal_Document()
-    
+
     # Merge metadata (doc2 takes precedence)
     merged.metadata = doc2.metadata or doc1.metadata
-    
+
     # Merge frames
     merged.frames = doc1.frames + doc2.frames
-    
+
     # Merge global settings
     merged.global_settings = {**doc1.global_settings, **doc2.global_settings}
-    
+
     return merged

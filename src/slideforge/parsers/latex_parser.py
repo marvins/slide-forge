@@ -28,7 +28,7 @@ from ..base import Base_Parser
 from ..models.universal import (
     Universal_Document, Universal_Frame, Universal_Element,
     Metadata, Element_Type, Layout_Type, Text_Content,
-    create_text_element, create_image_element, create_itemize_element
+    create_text_element, create_image_element, create_itemize_element, create_equation_element
 )
 from ..exceptions import ParseError
 
@@ -42,6 +42,10 @@ class LaTeX_Parser(Base_Parser):
         self.title_pattern = re.compile(r'\\frametitle\{([^}]+)\}', re.IGNORECASE)
         self.itemize_pattern = re.compile(r'\\item\s+(.+)', re.IGNORECASE)
         self.includegraphics_pattern = re.compile(r'\\includegraphics(?:\[[^\]]*\])\{([^}]+)\}', re.IGNORECASE)
+        # Equation patterns for inline and display math
+        self.inline_equation_pattern = re.compile(r'\$([^$]+)\$', re.IGNORECASE)
+        self.display_equation_pattern = re.compile(r'\\begin\{equation\*?\}(.*?)\\end\{equation\*?\}', re.DOTALL | re.IGNORECASE)
+        self.display_equation_pattern_alt = re.compile(r'\\\[(.*?)\\\]', re.DOTALL | re.IGNORECASE)
 
     def parse_file(self, filepath: Path, **kwargs) -> Universal_Document:
         """
@@ -179,6 +183,19 @@ class LaTeX_Parser(Base_Parser):
             if img_match:
                 img_path = img_match.group(1).strip()
                 elements.append(create_image_element(img_path))
+                continue
+
+            # Handle equations
+            inline_eq_match = self.inline_equation_pattern.search(line)
+            if inline_eq_match:
+                equation_text = inline_eq_match.group(1).strip()
+                elements.append(create_equation_element(equation_text, 'inline'))
+                continue
+
+            display_eq_match = self.display_equation_pattern.search(line)
+            if display_eq_match:
+                equation_text = display_eq_match.group(1).strip()
+                elements.append(create_equation_element(equation_text, 'display'))
                 continue
 
             # Handle text content

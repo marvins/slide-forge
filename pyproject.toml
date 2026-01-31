@@ -35,6 +35,7 @@ dev = [
     "black>=22.0.0",
     "flake8>=5.0.0",
     "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
 ]
 
 [project.urls]
@@ -67,3 +68,4 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = "-v"

@@ -36,12 +36,13 @@ from .universal import (
     create_text_element,
     create_image_element,
     create_itemize_element,
+    create_equation_element,
     merge_documents
 )
 
 __all__ = [
     'Universal_Document',
-    'Universal_Frame', 
+    'Universal_Frame',
     'Universal_Element',
     'Metadata',
     'Element_Type',
@@ -54,5 +55,6 @@ __all__ = [
     'create_text_element',
     'create_image_element',
     'create_itemize_element',
+    'create_equation_element',
     'merge_documents'
 ]

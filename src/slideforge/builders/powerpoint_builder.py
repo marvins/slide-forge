@@ -213,6 +213,8 @@ class PowerPoint_Builder(Base_Builder):
                         self._add_itemize_element(slide_obj, element, config, preserve_colors)
                 elif element.element_type == Element_Type.IMAGE and include_images:
                     self._add_image_element(slide_obj, element, config, source_path)
+                elif element.element_type == Element_Type.EQUATION and include_images:
+                    self._add_equation_element(slide_obj, element, config, source_path)
                 elif element.element_type == Element_Type.BLOCK:
                     # Use content placeholder for first block if available
                     if not content_placeholder_used and hasattr(slide_obj.shapes, 'placeholders'):
@@ -521,3 +523,122 @@ class PowerPoint_Builder(Base_Builder):
             self.logger.warning(f"Failed to use content placeholder for block: {e}")
 
         return False
+
+    def _add_equation_element(self, slide_obj, element: Universal_Element,
+                            config: Dict[str, Any], source_path: str = ''):
+        """Add an equation element by rendering LaTeX to image."""
+        try:
+            content = element.content
+            latex_equation = content.get('latex', '')
+            equation_type = content.get('type', 'inline')
+
+            if not latex_equation:
+                self.logger.warning("Empty equation content")
+                return
+
+            # Render LaTeX equation to image
+            image_path = self._render_latex_equation(latex_equation, equation_type, source_path)
+
+            if image_path and Path(image_path).exists():
+                # Add as image with equation-specific positioning
+                left = Inches(1) if element.position else Inches(1)
+                top = Inches(2) if element.position else Inches(2)
+
+                # Different sizing for inline vs display equations
+                if equation_type == 'inline':
+                    width = Inches(2) if element.size else Inches(2)
+                    height = Inches(0.5) if element.size else Inches(0.5)
+                else:  # display
+                    width = Inches(6) if element.size else Inches(6)
+                    height = Inches(1.5) if element.size else Inches(1.5)
+
+                slide_obj.shapes.add_picture(str(image_path), left, top, width, height)
+                self.logger.info(f"Successfully added equation: {latex_equation[:50]}...")
+            else:
+                self.logger.warning(f"Failed to render equation image: {latex_equation[:50]}...")
+
+        except Exception as e:
+            self.logger.warning(f"Failed to add equation element: {e}")
+
+    def _render_latex_equation(self, latex_equation: str, equation_type: str, source_path: str = '') -> Optional[Path]:
+        """Render LaTeX equation to PNG image using temporary files."""
+        import tempfile
+        import subprocess
+        import hashlib
+
+        try:
+            # Create cache directory
+            cache_dir = Path(source_path).parent / '.equation_cache' if source_path else Path.cwd() / '.equation_cache'
+            cache_dir.mkdir(exist_ok=True)
+
+            # Create hash for caching
+            equation_hash = hashlib.md5(f"{latex_equation}_{equation_type}".encode()).hexdigest()
+            cached_image = cache_dir / f"eq_{equation_hash}.png"
+
+            # Return cached image if exists
+            if cached_image.exists():
+                return cached_image
+
+            # Create temporary LaTeX document
+            if equation_type == 'inline':
+                latex_doc = f"""
+\\documentclass[preview]{{standalone}}
+\\usepackage{{amsmath}}
+\\begin{{document}}
+\\({latex_equation}\\)
+\\end{{document}}
+"""
+            else:  # display
+                latex_doc = f"""
+\\documentclass[preview]{{standalone}}
+\\usepackage{{amsmath}}
+\\begin{{document}}
+\\[{latex_equation}\\]
+\\end{{document}}
+"""
+
+            # Create temporary files
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.tex', delete=False, dir=cache_dir) as f:
+                f.write(latex_doc)
+                tex_path = Path(f.name)
+
+            # Compile LaTeX to DVI
+            result = subprocess.run([
+                'latex', '-output-directory=' + str(cache_dir), '-interaction=nonstopmode', str(tex_path)
+            ], capture_output=True, text=True, cwd=cache_dir)
+
+            if result.returncode != 0:
+                self.logger.warning(f"LaTeX compilation failed: {result.stderr}")
+                return None
+
+            # Convert DVI to PNG
+            dvi_path = cache_dir / tex_path.stem
+            png_path = cache_dir / f"eq_{equation_hash}.png"
+
+            result = subprocess.run([
+                'dvipng', '-T', 'tight', '-D', '120', '-bg', 'Transparent', str(dvi_path), str(png_path)
+            ], capture_output=True, text=True, cwd=cache_dir)
+
+            if result.returncode != 0:
+                self.logger.warning(f"DVI to PNG conversion failed: {result.stderr}")
+                return None
+
+            # Cleanup temporary files
+            tex_path.unlink(missing_ok=True)
+            dvi_path.with_suffix('.dvi').unlink(missing_ok=True)
+            dvi_path.with_suffix('.log').unlink(missing_ok=True)
+            dvi_path.with_suffix('.aux').unlink(missing_ok=True)
+
+            return png_path if png_path.exists() else None
+
+        except FileNotFoundError as e:
+            if 'latex' in str(e):
+                self.logger.warning("LaTeX not found. Equations will be skipped. Install LaTeX (TeX Live, MiKTeX, etc.)")
+            elif 'dvipng' in str(e):
+                self.logger.warning("dvipng not found. Equation images will be skipped. Install dvipng")
+            else:
+                self.logger.warning(f"File not found in equation rendering: {e}")
+            return None
+        except Exception as e:
+            self.logger.warning(f"Error rendering equation: {e}")
+            return None
