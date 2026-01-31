@@ -14,9 +14,7 @@ site:
   options:
     # favicon: favicon.ico
     # logo: site_logo.png
-    base_url: /
-    # Disable custom theme file to prevent empty CSS reference
-    use_custom_theme: false
+    base_url: /slide-forge/
   # Site configuration for proper asset paths
   title: Slide Forge Documentation
   description: Documentation for Slide Forge - LaTeX Beamer to PowerPoint converter
