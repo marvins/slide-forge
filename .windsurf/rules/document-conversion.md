@@ -96,6 +96,15 @@ make distclean  # Remove all generated files
 - **Color Schemes**: Custom color definitions
 - **TikZ Diagrams**: Architecture and flow diagrams
 
+### LaTeX → PowerPoint (Beamer) Fallback Rules
+- **Always handle `\titlepage` frames before slide creation** to avoid empty slides.
+- **Parse preamble metadata**: `\title`, `\subtitle`, `\author`, `\date`, `\institute`.
+- **Use real PPT bullets**: create paragraphs and set `.level` instead of prefixing with `•`.
+- **Strip layout commands**: `\vspace`, `\textcolor`, `\includegraphics`, `\centering`.
+- **Insert images**: detect `\includegraphics{...}` and add via `slide.shapes.add_picture`.
+- **Skip LaTeX environment markers**: `\begin{...}` / `\end{...}` lines.
+- **Avoid hardcoded titles**; always read from preamble.
+
 ### Markdown Generation
 - **Marp Compatibility**: Full Marp frontmatter support
 - **Slide Separators**: Proper `---` separators

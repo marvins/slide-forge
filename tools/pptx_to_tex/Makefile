@@ -243,14 +243,12 @@ beamer2pdf: pdf-only
 	@echo "Beamer → PDF complete!"
 	@echo "PDF saved to $(OUTPUT_DIR)/$(basename $(MAIN_TEX)).pdf"
 
-# Convert Beamer to PowerPoint (stub implementation)
-# This is a placeholder for future Beamer-to-PowerPoint conversion functionality
+# Convert Beamer to PowerPoint
+# Uses our improved fallback method with proper slide structure and formatting
 beamer2pptx:
-	@echo "Beamer → PowerPoint conversion (stub - not implemented yet)"
-	@echo "This would convert $(MAIN_TEX) to PowerPoint format"
-	@echo "For now, use: python ppt_converter.py $(MAIN_TEX) pptx"
-	# Attempt conversion using existing converter, but don't fail if it doesn't work
-	@bash -c "source venv/bin/activate && python3 ppt_converter.py \"$(MAIN_TEX)\" pptx" 2>/dev/null || echo "Conversion failed - feature not fully implemented"
+	@echo "Beamer → PowerPoint conversion"
+	@echo "Converting $(MAIN_TEX) to PowerPoint format"
+	@bash -c "source venv/bin/activate && python3 ppt_converter.py \"$(MAIN_TEX)\" pptx" 2>/dev/null || echo "Conversion failed"
 	# Copy generated PPTX to output directory if it exists
 	@if [ -f latex/presentation.pptx ]; then \
 		cp latex/presentation.pptx $(OUTPUT_DIR)/; \
