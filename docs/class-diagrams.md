@@ -4,15 +4,15 @@
 
 ```mermaid
 classDiagram
-    class SlideForge {
-        -parser: LaTeXParser
-        -mapper: ContentMapper
-        -builder: PowerPointBuilder
+    class Slide_Forge {
+        -parser: latex_parser
+        -mapper: content_mapper
+        -builder: powerpoint_builder
         +convert_file(latex_file: str, output_file: str) bool
         +convert_string(latex_content: str, output_file: str) bool
     }
 
-    class LaTeXParser {
+    class LaTeX_Parser {
         +parse_file(filepath: str) Document
         +parse_string(content: str) Document
         -_extract_preamble(content: str) Metadata
@@ -20,25 +20,25 @@ classDiagram
         -_parse_frame(frame_content: str) Frame
     }
 
-    class ContentMapper {
-        +map_document(document: Document) List[SlideStructure]
-        +map_frame(frame: Frame) SlideStructure
-        +map_element(element: Element) SlideElement
-        -_determine_layout(elements: List[Element]) LayoutType
+    class Content_Mapper {
+        +map_document(document: Document) List[Slide_Structure]
+        +map_frame(frame: Frame) Slide_Structure
+        +map_element(element: Element) Slide_Element
+        -_determine_layout(elements: List[Element]) Layout_Type
     }
 
-    class PowerPointBuilder {
+    class PowerPoint_Builder {
         -presentation: Presentation
-        +build_presentation(slides: List[SlideStructure])
-        +add_slide(slide: SlideStructure)
+        +build_presentation(slides: List[Slide_Structure])
+        +add_slide(slide: Slide_Structure)
         +save(filepath: str)
-        -_create_title_slide(slide: SlideStructure)
-        -_create_content_slide(slide: SlideStructure)
+        -_create_title_slide(slide: Slide_Structure)
+        -_create_content_slide(slide: Slide_Structure)
     }
 
-    SlideForge --> LaTeXParser
-    SlideForge --> ContentMapper
-    SlideForge --> PowerPointBuilder
+    Slide_Forge --> LaTeX_Parser
+    Slide_Forge --> Content_Mapper
+    Slide_Forge --> PowerPoint_Builder
 ```
 
 ## Data Model
@@ -65,32 +65,32 @@ classDiagram
 
     class Element {
         <<abstract>>
-        +type: ElementType
+        +type: Element_Type
     }
 
-    class TextElement {
+    class Text_Element {
         +text: str
         +formatting: Formatting
     }
 
-    class ItemizeElement {
+    class Itemize_Element {
         +content: List[Item]
     }
 
-    class BlockElement {
+    class Block_Element {
         +title: str
         +content: List[Text]
     }
 
-    class ImageElement {
+    class Image_Element {
         +path: str
         +caption: str
     }
 
-    Element <|-- TextElement
-    Element <|-- ItemizeElement
-    Element <|-- BlockElement
-    Element <|-- ImageElement
+    Element <|-- Text_Element
+    Element <|-- Itemize_Element
+    Element <|-- Block_Element
+    Element <|-- Image_Element
 
     Document *-- Metadata
     Document *-- Frame
@@ -101,46 +101,46 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class SlideStructure {
-        +layout: LayoutType
+    class Slide_Structure {
+        +layout: Layout_Type
         +title: str
-        +elements: List[SlideElement]
+        +elements: List[Slide_Element]
     }
 
-    class SlideElement {
+    class Slide_Element {
         <<abstract>>
-        +type: SlideElementType
+        +type: Slide_Element_Type
     }
 
-    class TitleElement {
+    class Title_Element {
         +text: str
-        +style: TitleStyle
+        +style: Title_Style
     }
 
-    class BulletElement {
+    class Bullet_Element {
         +text: str
         +level: int
-        +style: BulletStyle
+        +style: Bullet_Style
     }
 
-    class TextBoxElement {
+    class Text_Box_Element {
         +text: str
         +position: Position
-        +style: TextStyle
+        +style: Text_Style
     }
 
-    class ImageElement {
+    class Image_Element {
         +path: str
         +position: Position
         +size: Size
     }
 
-    SlideElement <|-- TitleElement
-    SlideElement <|-- BulletElement
-    SlideElement <|-- TextBoxElement
-    SlideElement <|-- ImageElement
+    Slide_Element <|-- Title_Element
+    Slide_Element <|-- Bullet_Element
+    Slide_Element <|-- Text_Box_Element
+    Slide_Element <|-- Image_Element
 
-    SlideStructure *-- SlideElement
+    Slide_Structure *-- Slide_Element
 ```
 
 ## CLI Application
@@ -165,7 +165,7 @@ classDiagram
     }
 
     CLI --> ConversionConfig
-    CLI --> SlideForge
+    CLI --> Slide_Forge
 ```
 
 ## Component Interactions
@@ -173,18 +173,18 @@ classDiagram
 ```mermaid
 sequenceDiagram
     participant CLI
-    participant SlideForge
-    participant LaTeXParser
-    participant ContentMapper
-    participant PowerPointBuilder
+    participant Slide_Forge
+    participant LaTeX_Parser
+    participant Content_Mapper
+    participant PowerPoint_Builder
 
-    CLI->>SlideForge: convert_file(input, output)
-    SlideForge->>LaTeXParser: parse_file(input)
-    LaTeXParser-->>SlideForge: Document
-    SlideForge->>ContentMapper: map_document(document)
-    ContentMapper-->>SlideForge: List[SlideStructure]
-    SlideForge->>PowerPointBuilder: build_presentation(slides)
-    PowerPointBuilder->>PowerPointBuilder: add_slide() for each slide
+    CLI->>Slide_Forge: convert_file(input, output)
+    Slide_Forge->>LaTeX_Parser: parse_file(input)
+    LaTeX_Parser-->>Slide_Forge: Document
+    Slide_Forge->>Content_Mapper: map_document(document)
+    Content_Mapper-->>Slide_Forge: List[Slide_Structure]
+    Slide_Forge->>PowerPoint_Builder: build_presentation(slides)
+    PowerPoint_Builder->>PowerPoint_Builder: add_slide() for each slide
     PowerPointBuilder-->>SlideForge: save(output)
     SlideForge-->>CLI: success/failure
 ```
@@ -193,69 +193,69 @@ sequenceDiagram
 
 ```mermaid
 classDiagram
-    class SlideForgeError {
+    class Slide_Forge_Error {
         <<abstract>>
         +message: str
     }
 
-    class ParseError {
+    class Parse_Error {
         +line_number: int
         +latex_snippet: str
     }
 
-    class MappingError {
+    class Mapping_Error {
         +element_type: str
         +reason: str
     }
 
-    class BuilderError {
+    class Builder_Error {
         +slide_number: int
         +operation: str
     }
 
-    SlideForgeError <|-- ParseError
-    SlideForgeError <|-- MappingError
-    SlideForgeError <|-- BuilderError
+    Slide_Forge_Error <|-- Parse_Error
+    Slide_Forge_Error <|-- Mapping_Error
+    Slide_Forge_Error <|-- Builder_Error
 ```
 
 ## Enums and Types
 
 ```mermaid
 classDiagram
-    class ElementType {
+    class Element_Type {
         <<enumeration>>
-        TEXT
-        ITEMIZE
-        BLOCK
-        IMAGE
-        TABLE
-        MATH
+        text
+        itemize
+        block
+        image
+        table
+        math
     }
 
-    class LayoutType {
+    class Layout_Type {
         <<enumeration>>
-        TITLE_SLIDE
-        TITLE_AND_CONTENT
-        SECTION_HEADER
-        TWO_COLUMN
-        BLANK
+        title_slide
+        title_and_content
+        section_header
+        two_column
+        blank
     }
 
     class Formatting {
         <<enumeration>>
-        BOLD
-        ITALIC
-        UNDERLINE
-        NORMAL
+        bold
+        italic
+        underline
+        normal
     }
 
-    class SlideElementType {
+    class Slide_Element_Type {
         <<enumeration>>
-        TITLE
-        BULLET
-        TEXT_BOX
-        IMAGE
-        SHAPE
-        CHART
+        title
+        bullet
+        text_box
+        image
+        shape
+        chart
     }
 ```

@@ -92,7 +92,7 @@ mypy src/
 Slide Forge follows a modular architecture:
 
 1. **Parser** - Extracts structure from LaTeX Beamer files
-2. **Mapper** - Maps LaTeX elements to PowerPoint equivalents  
+2. **Mapper** - Maps LaTeX elements to PowerPoint equivalents
 3. **Builder** - Creates PowerPoint presentations using python-pptx
 
 See [docs/class-diagrams.md](docs/class-diagrams.md) for detailed architecture diagrams.
@@ -117,6 +117,29 @@ See [docs/class-diagrams.md](docs/class-diagrams.md) for detailed architecture d
 - [ ] Advanced LaTeX commands
 - [ ] Batch processing
 - [ ] GUI application
+
+## TODO: Documentation Setup
+
+### 1. Create Jupyter Book Structure
+- [ ] Install Jupyter Book dependencies: `pip install jupyter-book sphinx`
+- [ ] Initialize Jupyter Book in `docs/` directory
+- [ ] Create `_config.yml` with Sphinx extensions for API docs
+- [ ] Create `_toc.yml` with book structure (intro, API, tutorials, examples)
+- [ ] Convert existing `docs/class-diagrams.md` to Jupyter Book format
+- [ ] Create interactive tutorial notebooks for basic conversion
+- [ ] Set up auto-generated API documentation from docstrings
+- [ ] Test local build with `jb build docs`
+
+### 2. Setup GitHub Actions for Auto-Deployment
+- [ ] Create `.github/workflows/docs.yml` workflow file
+- [ ] Configure workflow to trigger on push to `main` branch
+- [ ] Set up Python environment and install dependencies
+- [ ] Add Jupyter Book build step
+- [ ] Configure GitHub Pages deployment to `gh-pages` branch
+- [ ] Add PR preview functionality (optional)
+- [ ] Test workflow with sample documentation changes
+- [ ] Configure GitHub repository settings for GitHub Pages
+- [ ] Verify documentation is accessible at `https://marvins.github.io/slide-forge/`
 
 ## Contributing
 
