@@ -1,0 +1,30 @@
+\documentclass{beamer}
+
+\begin{frame}{Table Examples}
+\begin{table}
+\centering
+\begin{tabular}{|l|c|r|}
+\hline
+\textbf{Column 1} & \textbf{Column 2} & \textbf{Column 3} \\
+\hline
+Row 1, Col 1 & Row 1, Col 2 & Row 1, Col 3 \\
+Row 2, Col 1 & Row 2, Col 2 & Row 2, Col 3 \\
+\hline
+\end{tabular}
+\caption{Simple table example}
+\end{table}
+
+\begin{table}
+\centering
+\begin{tabular}{lcc}
+\hline
+\multicolumn{2}{c}{\textbf{Header}} \\
+\hline
+Left aligned & Centered & Right aligned \\
+\hline
+Data 1 & Data 2 & Data 3 \\
+Data 4 & Data 5 & Data 6 \\
+\hline
+\end{tabular}
+\end{table}
+\end{frame}

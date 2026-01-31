@@ -340,7 +340,7 @@ class PowerPoint_Builder(Base_Builder):
             else:
                 p = text_frame.paragraphs[0]
 
-            p.text = f"• {item}"
+            p.text = item
             p.level = element.level if hasattr(element, 'level') else 0
             # Set font size with proper conversion
             font_size = config.get('content_font_size', 18)
@@ -423,9 +423,21 @@ class PowerPoint_Builder(Base_Builder):
                                 config: Dict[str, Any], preserve_colors: bool) -> bool:
         """Add text to the slide's content placeholder. Returns True if successful."""
         try:
-            # Find the content placeholder (usually placeholder index 1)
+            # Find the content placeholder (check both type and name for robustness)
             for placeholder in slide_obj.placeholders:
-                if placeholder.placeholder_format.type == 1:  # Body placeholder
+                # Check for body/content placeholder by type or name
+                is_body_placeholder = (
+                    placeholder.placeholder_format.type == 1 or  # Body placeholder
+                    'content' in placeholder.name.lower() or
+                    'body' in placeholder.name.lower()
+                )
+                # Skip title placeholder
+                is_title_placeholder = (
+                    placeholder.placeholder_format.type == 0 or  # Title placeholder
+                    'title' in placeholder.name.lower()
+                )
+
+                if is_body_placeholder and not is_title_placeholder:
                     content = element.content
                     if isinstance(content, str):
                         text = content
@@ -455,9 +467,21 @@ class PowerPoint_Builder(Base_Builder):
                                     config: Dict[str, Any], preserve_colors: bool) -> bool:
         """Add itemize to the slide's content placeholder. Returns True if successful."""
         try:
-            # Find the content placeholder
+            # Find the content placeholder (check both type and name for robustness)
             for placeholder in slide_obj.placeholders:
-                if placeholder.placeholder_format.type == 1:  # Body placeholder
+                # Check for body/content placeholder by type or name
+                is_body_placeholder = (
+                    placeholder.placeholder_format.type == 1 or  # Body placeholder
+                    'content' in placeholder.name.lower() or
+                    'body' in placeholder.name.lower()
+                )
+                # Skip title placeholder
+                is_title_placeholder = (
+                    placeholder.placeholder_format.type == 0 or  # Title placeholder
+                    'title' in placeholder.name.lower()
+                )
+
+                if is_body_placeholder and not is_title_placeholder:
                     content = element.content
                     if isinstance(content, dict) and 'items' in content:
                         items = content['items']
@@ -473,7 +497,7 @@ class PowerPoint_Builder(Base_Builder):
                         else:
                             p = text_frame.paragraphs[0]
 
-                        p.text = f"• {item}"
+                        p.text = item
                         p.level = element.level if hasattr(element, 'level') else 0
 
                         # Set font size with proper conversion
@@ -616,8 +640,8 @@ class PowerPoint_Builder(Base_Builder):
             png_path = cache_dir / f"eq_{equation_hash}.png"
 
             result = subprocess.run([
-                'dvipng', '-T', 'tight', '-D', '120', '-bg', 'Transparent',
-                '-o', png_path.name, dvi_path.name
+                'dvipng', '-T', 'tight', '-D', '300', '-bg', 'White',
+                '-Q', '9', '-o', png_path.name, dvi_path.name
             ], capture_output=True, text=True, cwd=cache_dir)
 
             if result.returncode != 0:

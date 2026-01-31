@@ -62,33 +62,33 @@ class LaTeX_Parser(Base_Parser):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
-
             return self.parse_string(content, **kwargs)
-
         except FileNotFoundError:
-            raise ParseError(f"File not found: {filepath}", file_path=str(filepath))
-        except Exception as e:
-            raise ParseError(f"Error reading file: {e}", file_path=str(filepath))
+            raise ParseError(f"LaTeX file not found: {filepath}")
+        except UnicodeDecodeError:
+            raise ParseError(f"Could not read LaTeX file (encoding issue): {filepath}")
 
     def parse_string(self, content: str, **kwargs) -> Universal_Document:
-        """
-        Parse LaTeX Beamer content and return a Universal_Document.
-
-        Args:
-            content: LaTeX content as string
-            **kwargs: Additional parsing options
-
-        Returns:
-            Universal_Document object
-        """
+        """Parse LaTeX string into Universal Document format."""
         document = Universal_Document()
         document.source_format = 'latex'
+
+        # Store document reference for use in other methods
+        self._document = document
+
+        # Reset sections for new document
+        self.sections = []
 
         # Extract metadata
         self._extract_metadata(content, document)
 
+        # Collect sections for table of contents
+        self._collect_sections(content)
+
         # Extract frames
-        self._extract_frames(content, document)
+        frames = self._extract_frames(content, document)
+        for frame in frames:
+            document.add_frame(frame)
 
         return document
 
@@ -114,21 +114,38 @@ class LaTeX_Parser(Base_Parser):
             document.metadata.date = date_match.group(1).strip()
 
         # Extract document class
-        docclass_match = re.search(r'\\documentclass(?:\[[^\]]*\])\{([^}]+)\}', content, re.IGNORECASE)
+        docclass_match = re.search(r'\\documentclass\{([^}]+)\}', content, re.IGNORECASE)
         if docclass_match:
             document.metadata.custom_properties['documentclass'] = docclass_match.group(1).strip()
+
+    def _collect_sections(self, content: str):
+        """Collect section information for table of contents."""
+        # Find all sections
+        section_pattern = r'\\section\{([^}]+)\}'
+        matches = re.finditer(section_pattern, content, re.IGNORECASE)
+
+        for match in matches:
+            # Unescape LaTeX special characters for display
+            section_title = match.group(1).strip()
+            section_title = section_title.replace(r'\&', '&')
+            section_title = section_title.replace(r'\_', '_')
+            section_title = section_title.replace(r'\$', '$')
+            self.sections.append(section_title)
 
     def _extract_frames(self, content: str, document: Universal_Document):
         """Extract frames from LaTeX content."""
         frame_matches = self.frame_pattern.finditer(content)
 
         frame_number = 1
+        frames = []
         for match in frame_matches:
             frame_title = match.group(1)  # Title from \begin{frame}{title}
             frame_content = match.group(2)  # Frame content
             frame = self._parse_frame(frame_content, frame_number, frame_title)
-            document.add_frame(frame)
+            frames.append(frame)
             frame_number += 1
+
+        return frames
 
     def _parse_frame(self, frame_content: str, frame_number: int, frame_title: str = None) -> Universal_Frame:
         """Parse a single frame."""
@@ -146,8 +163,11 @@ class LaTeX_Parser(Base_Parser):
                 frame.layout = Layout_Type.TITLE_AND_CONTENT
             else:
                 # Check if this might be a title slide
-                if frame_number == 1 and '\\titlepage' in frame_content:
+                if '\\titlepage' in frame_content:
                     frame.layout = Layout_Type.TITLE_SLIDE
+                    # Populate with metadata if available
+                    if hasattr(self, '_document') and self._document.metadata.title:
+                        frame.title = self._document.metadata.title
 
         # Parse elements
         elements = self._parse_elements(frame_content, frame.layout)
@@ -174,6 +194,17 @@ class LaTeX_Parser(Base_Parser):
 
             # Skip frametitle commands as they're handled separately
             if line.startswith('\\frametitle'):
+                continue
+
+            # Handle table of contents
+            if line.startswith('\\tableofcontents'):
+                # Create outline element with sections (no bullets - let PowerPoint handle them)
+                if self.sections:
+                    outline_content = '\n'.join([section for section in self.sections])
+                    elements.append(Universal_Element(
+                        element_type=Element_Type.ITEMIZE,
+                        content={'items': self.sections}
+                    ))
                 continue
 
             # Handle itemize environments
