@@ -6,7 +6,7 @@ LaTeX equations are appearing as raw text in PowerPoint slides instead of being 
 ## Current Input Flow
 
 ```mermaid
-graph TD
+graph LR
     A[LaTeX Source] --> B[Parser]
     B --> C[Universal_Element]
     C --> D[PowerPoint_Builder]
@@ -19,7 +19,7 @@ graph TD
 
 ### Expected Workflow
 ```mermaid
-graph TD
+graph LR
     A["LaTeX: begin align...end align"] --> B[Parse Equation Type]
     B --> C[Render to Image]
     C --> D[Insert Image into PowerPoint]
@@ -28,7 +28,7 @@ graph TD
 
 ### Actual Workflow
 ```mermaid
-graph TD
+graph LR
     A["LaTeX: begin align...end align"] --> B[Pass Through as Text]
     B --> C[Insert Text Box]
     C --> D[Raw LaTeX Text Display]
@@ -74,19 +74,19 @@ def _add_equation_element(self, slide_obj, element: Universal_Element,
 
         # Render LaTeX to image
         image_path = self._render_latex_equation(latex_content, equation_type, source_path)
-        
+
         if image_path and image_path.exists():
             # Add rendered image to slide
             left = Inches(1) if element.position else Inches(1)
             top = Inches(2) if not hasattr(element, 'current_top') else element.current_top
             width = Inches(6) if element.size else Inches(6)
             height = Inches(2) if element.size else None
-            
+
             slide_obj.shapes.add_picture(str(image_path), left, top, width, height)
         else:
             # Fallback: add as text (THIS IS THE PROBLEM)
             self._add_equation_as_text(slide_obj, element, config)
-            
+
     except Exception as e:
         self.logger.warning(f"Failed to add equation element: {e}")
 ```
@@ -106,13 +106,13 @@ def _render_latex_equation(self, latex_equation: str, equation_type: str, source
         # Compile LaTeX to PDF
         pdf_path = tex_path.replace('.tex', '.pdf')
         subprocess.run(['pdflatex', tex_path], check=True, capture_output=True)
-        
+
         # Convert PDF to PNG
         png_path = tex_path.replace('.tex', '.png')
         subprocess.run(['convert', pdf_path, png_path], check=True, capture_output=True)
-        
+
         return Path(png_path)
-        
+
     except Exception as e:
         self.logger.error(f"Failed to render LaTeX equation: {e}")
         return None
@@ -134,15 +134,15 @@ def _render_latex_equation(self, latex_equation: str, equation_type: str, source
 
 ### 2. Cross-Platform Compatibility
 ```mermaid
-graph TD
+graph LR
     A[Windows] --> B[MiKTeX/TeX Live]
     C[macOS] --> D[MacTeX]
     E[Linux] --> F[TeX Live]
-    
+
     B --> G[Different Paths]
     D --> G
     F --> G
-    
+
     G --> H[Environment Variables]
     H --> I[Tool Discovery Issues]
 ```
@@ -169,19 +169,19 @@ graph TD
 
 ### Debugging Steps Needed:
 ```mermaid
-graph TD
+graph LR
     A[Check LaTeX Installation] --> B{pdflatex available?}
     B -->|No| C[Install LaTeX Distribution]
     B -->|Yes| D[Check ImageMagick]
-    
+
     D --> E{convert available?}
     E -->|No| F[Install ImageMagick]
     E -->|Yes| G[Test Simple Equation]
-    
+
     G --> H{Compilation Success?}
     H -->|No| I[Check LaTeX Syntax]
     H -->|Yes| J[Check File Permissions]
-    
+
     I --> K[Fix LaTeX Issues]
     J --> L{Temp Files Work?}
     L -->|No| M[Check Permissions]
@@ -194,18 +194,18 @@ graph TD
 ```python
 def _render_latex_equation_robust(self, latex_equation: str, equation_type: str):
     """Enhanced LaTeX rendering with fallbacks."""
-    
+
     # 1. Check dependencies
     if not self._check_latex_dependencies():
         raise BuilderError("LaTeX dependencies not available")
-    
+
     # 2. Validate LaTeX syntax
     if not self._validate_latex_syntax(latex_equation):
         raise BuilderError("Invalid LaTeX syntax")
-    
+
     # 3. Create robust document
     tex_content = self._create_latex_document(latex_equation, equation_type)
-    
+
     # 4. Compile with error handling
     try:
         return self._compile_latex_to_image(tex_content)
@@ -218,36 +218,36 @@ def _render_latex_equation_robust(self, latex_equation: str, equation_type: str)
 ```python
 def _render_equation_alternative(self, latex_equation: str):
     """Fallback math rendering options."""
-    
+
     # Option A: MathJax to SVG
     if self._mathjax_available():
         return self._render_with_mathjax(latex_equation)
-    
+
     # Option B: Unicode Math
     return self._render_as_unicode_math(latex_equation)
-    
+
     # Option C: Plain text with formatting
     return self._render_as_formatted_text(latex_equation)
 ```
 
 ### Option 3: Hybrid Approach
 ```mermaid
-graph TD
+graph LR
     A[Equation Input] --> B{LaTeX Available?}
     B -->|Yes| C[Render with LaTeX]
     B -->|No| D[MathJax Available?]
-    
+
     C --> E{Success?}
     E -->|Yes| F[Use LaTeX Image]
     E -->|No| D
-    
+
     D -->|Yes| G[Render with MathJax]
     D -->|No| H[Unicode Math]
-    
+
     G --> I{Success?}
     I -->|Yes| J[Use SVG]
     I -->|No| H
-    
+
     H --> K[Use Unicode/Text]
 ```
 
