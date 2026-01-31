@@ -616,7 +616,8 @@ class PowerPoint_Builder(Base_Builder):
             png_path = cache_dir / f"eq_{equation_hash}.png"
 
             result = subprocess.run([
-                'dvipng', '-T', 'tight', '-D', '120', '-bg', 'Transparent', str(dvi_path), str(png_path)
+                'dvipng', '-T', 'tight', '-D', '120', '-bg', 'Transparent',
+                '-o', png_path.name, dvi_path.name
             ], capture_output=True, text=True, cwd=cache_dir)
 
             if result.returncode != 0:

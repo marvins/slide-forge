@@ -26,7 +26,7 @@ from unittest.mock import Mock, patch
 from pptx import Presentation
 from slideforge.builders.powerpoint_builder import PowerPoint_Builder
 from slideforge.models.universal import (
-    Universal_Element, Element_Type, Layout_Type, Position, Size
+    Universal_Element, Universal_Frame, Element_Type, Layout_Type, Position, Size
 )
 
 
@@ -323,8 +323,22 @@ class TestPowerPointBuilder:
                     mock_hash_instance.hexdigest.return_value = 'test_hash'
                     mock_hash.return_value = mock_hash_instance
 
-                    result1 = builder._render_latex_equation(latex_eq, eq_type, '')
-                    result2 = builder._render_latex_equation(latex_eq, eq_type, '')
+                    # Call equation rendering
+                    result = builder._render_latex_equation(latex_eq, eq_type, '/tmp/test_path')
+
+                    # Verify dvipng was called with relative paths (not full paths)
+                    dvipng_calls = [call for call in mock_run.call_args_list
+                                   if 'dvipng' in str(call)]
+                    if dvipng_calls:
+                        dvipng_call = dvipng_calls[0]
+                        args = dvipng_call[0][0]  # First argument is the command list
+                        assert 'dvipng' in args
+                        # Check that relative paths are used (no directory separators in filenames)
+                        assert any(arg.endswith('.dvi') and '/' not in arg for arg in args)
+                        assert any(arg.endswith('.png') and '/' not in arg for arg in args)
+
+                    result1 = builder._render_latex_equation(latex_eq, eq_type, '/tmp/test_path')
+                    result2 = builder._render_latex_equation(latex_eq, eq_type, '/tmp/test_path')
 
                     # Should return cached result on second call
                     assert result1 == result2
