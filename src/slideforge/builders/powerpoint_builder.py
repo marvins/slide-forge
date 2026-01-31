@@ -462,9 +462,10 @@ class PowerPoint_Builder(Base_Builder):
                 parts = re.split(equation_pattern, block_content, flags=re.DOTALL)
 
                 current_top = 0.1  # Start position within block
-                for part in parts:
+                for i, part in enumerate(parts):
                     if part.strip():
-                        if re.match(equation_pattern, part.strip(), flags=re.DOTALL):
+                        # Check if this part is an equation (odd indices are equations from split)
+                        if i % 2 == 1:  # Odd indices are equations from regex split
                             # This is an equation - render it
                             try:
                                 # Determine equation type

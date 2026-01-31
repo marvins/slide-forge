@@ -25,6 +25,7 @@ Convert sample LaTeX Beamer presentation to PowerPoint format
 
 import sys
 import os
+import shutil
 from pathlib import Path
 
 # Add the src directory to the path so we can import slideforge
@@ -32,8 +33,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from slideforge import Slide_Forge
 
+def cleanup_equation_cache():
+    """Clean up equation cache to ensure fresh renders"""
+    project_root = Path(__file__).parent.parent
+    cache_dir = project_root / "samples" / "beamer" / ".equation_cache"
+
+    if cache_dir.exists():
+        try:
+            shutil.rmtree(cache_dir)
+            print(f"Cleaned equation cache: {cache_dir}")
+        except Exception as e:
+            print(f"Warning: Failed to clean equation cache {cache_dir}: {e}")
+    else:
+        print(f"No equation cache found at {cache_dir}")
+
 def main():
     """Convert the sample Beamer presentation to PowerPoint"""
+
+    # Clean up equation cache first
+    cleanup_equation_cache()
 
     # Define paths
     project_root = Path(__file__).parent.parent
