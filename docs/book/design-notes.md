@@ -1,6 +1,6 @@
 # Design Notes
 
-This page contains the original design documentation and architectural decisions for Slide Forge.
+This page contains the original design documentation and architectural decisions for Slide Forge, along with insights from implementation.
 
 ## Overview
 
@@ -17,162 +17,243 @@ Slide Forge is a Python library for creating PowerPoint presentations. It is a w
 2. Should we use AST-like parsing or template-based approach?
 3. How do we handle complex LaTeX structures?
 
-## Proposed Workflow
+## Current Workflow
 
-### Phase 1: LaTeX Parsing
+### Phase 1: LaTeX Parsing ✅ COMPLETED
 ```
-LaTeX Beamer → Structured Data → PowerPoint API
-```
-
-**Option A: AST-like Parsing (Recommended)**
-- Parse LaTeX into hierarchical structure
-- Extract frames, environments, content
-- Build semantic understanding
-
-**Option B: Template-based**
-- Use regex patterns to extract content
-- Map to predefined PowerPoint templates
-- Limited flexibility
-
-### Phase 2: Content Mapping
-```
-Frame → Slide
-Itemize → Bullet Points
-Block → Formatted Text
-Columns → Layout
-Images → Picture Shapes
+LaTeX Beamer → Universal_Document → PowerPoint API
 ```
 
-### Phase 3: PowerPoint Generation
+**Implemented Approach**: AST-like parsing with regex-based extraction
+- Parse LaTeX into hierarchical Universal_Document structure
+- Extract frames, environments, and content
+- Build semantic understanding of document structure
+- Create format-agnostic data models
+
+### Phase 2: Content Mapping ✅ COMPLETED
 ```
-Structured Data → python-pptx API → .pptx File
+Universal_Document → Positioned Universal_Document
 ```
 
-## Architecture Design
+**Implemented Features**:
+- Layout-aware positioning calculations
+- Semantic element mapping (frames → slides, itemize → bullets, etc.)
+- Position assignment based on slide layout types
+- Image path resolution with source context
 
-### Core Components
+### Phase 3: PowerPoint Generation ✅ COMPLETED
+```
+Positioned Universal_Document → python-pptx API → .pptx File
+```
 
-1. **LaTeX Parser** (`slideforge.parser`)
-   - Tokenize LaTeX source
-   - Build document tree
-   - Extract metadata and frames
+**Implemented Features**:
+- Native PowerPoint placeholder usage
+- Smart text box positioning with fallbacks
+- Font size handling with proper Pt() units
+- Image embedding and path resolution
+- Theme system with multiple PowerPoint themes
 
-2. **Content Mapper** (`slideforge.mapper`)
-   - Map LaTeX elements to PowerPoint elements
-   - Handle layout decisions
-   - Manage styling rules
+## Next Phase Workflow
 
-3. **PowerPoint Builder** (`slideforge.builder`)
-   - Use python-pptx to create slides
-   - Apply formatting and positioning
-   - Handle charts, shapes, tables
+### Phase 4: Advanced Features 🔄 IN PROGRESS
+```
+Enhanced LaTeX → Extended Universal_Document → Advanced PowerPoint
+```
 
-4. **Style Engine** (`slideforge.styles`)
-   - Convert LaTeX themes to PowerPoint themes
-   - Handle colors, fonts, layouts
-   - Custom styling rules
+**Planned Enhancements**:
+- Math equation rendering (as images/text)
+- TikZ diagram conversion
+- Custom LaTeX command support
+- Beamer overlay specifications
+- Advanced table formatting
 
-### Data Flow
+### Phase 5: Multi-Format Support 📋 PLANNED
+```
+Universal_Document → Multiple Output Formats
+```
 
+**Target Formats**:
+- PowerPoint → LaTeX (round-trip conversion)
+- Markdown → PowerPoint
+- HTML/Web presentations
+- PDF export
+
+### Phase 6: Production Features 📋 PLANNED
+```
+Enhanced System → Enterprise-Ready Solution
+```
+
+**Enterprise Features**:
+- Template system with custom designs
+- Plugin architecture for extensibility
+- Performance optimizations
+- Batch processing capabilities
+- API for integration
+
+## Implementation Insights & Lessons Learned
+
+### 1. Positioning Architecture
+
+**Initial Problem**: All elements were overlapping because they were positioned at the same coordinates.
+
+**Solution**: Implemented a two-layer positioning system:
+- **Content Mapper**: Calculates semantic positions based on layout type
+- **PowerPoint Builder**: Renders elements at calculated positions
+
+**Key Insight**: Separation of concerns is crucial. The mapper handles "what goes where" while the builder handles "how to render."
+
+### 2. Native PowerPoint Placeholder Usage
+
+**Initial Problem**: Content was dumped into text boxes, causing "dashed boxes" (PowerPoint's default placeholders) to remain unused.
+
+**Solution**: Smart placeholder usage:
+```python
+# Use native content placeholder for first element
+if not content_placeholder_used and slide_obj.placeholders:
+    content_placeholder_used = self._add_text_to_placeholder(slide_obj, element, config, preserve_colors)
+else:
+    self._add_text_element(slide_obj, element, config, preserve_colors)
+```
+
+**Key Insight**: PowerPoint layouts work best when you respect their native structure. Use placeholders first, fall back to positioned text boxes.
+
+### 3. Font Size Handling
+
+**Problem**: Raw integers caused "value must be in range" errors with python-pptx.
+
+**Solution**: Use proper Pt() units:
+```python
+from pptx.util import Pt
+p.font.size = Pt(font_size)  # Instead of p.font.size = font_size
+```
+
+**Key Insight**: python-pptx has specific unit requirements. Always use the provided utility functions.
+
+### 4. Image Path Resolution
+
+**Problem**: Images were looked for in the wrong directory (project root instead of LaTeX file directory).
+
+**Solution**: Pass source path through the conversion chain:
+```python
+# Core passes source path to builder
+build_options = {**options.custom_settings, 'source_path': document.source_path}
+success = builder.build_presentation(slide_structures, output_path, **build_options)
+```
+
+**Key Insight**: Context matters. The builder needs to know where the source file was located to resolve relative paths.
+
+### 5. Layout System Design
+
+**Implementation**: Content mapper calculates positions based on layout constants:
+```python
+MARGIN_LEFT = 1.0
+MARGIN_TOP = 2.5  # Below title
+ELEMENT_SPACING = 0.4
+CONTENT_WIDTH = SLIDE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
+```
+
+**Key Insight**: Layout calculations should be format-agnostic in the mapper, with format-specific rendering in the builder.
+
+## Architecture Refinements
+
+### Current Data Flow (Revised)
 ```
 presentation.tex
     ↓
 LaTeXParser.parse()
     ↓
-DocumentTree {
+Universal_Document {
   metadata: {...},
-  frames: [
-    {
-      title: "Slide Title",
-      elements: [...]
-    }
-  ]
+  frames: [Universal_Frame {
+    title: "Slide Title",
+    elements: [Universal_Element {
+      element_type: Element_Type.TEXT,
+      content: "content",
+      position: Position {x: 1.0, y: 2.5, width: 8.0, height: 0.5}
+    }]
+  }]
 }
     ↓
-ContentMapper.map()
+ContentMapper.map()  # ← NEW: Adds positioning
     ↓
-SlideStructure {
-  layout: "title_and_content",
-  title: "Slide Title",
-  content: [...]
-}
+Positioned Universal_Document
     ↓
-PowerPointBuilder.build()
+PowerPointBuilder.build()  # ← ENHANCED: Uses placeholders + positioning
     ↓
 presentation.pptx
 ```
 
-## Key Design Questions
+### Key Architectural Principles
 
-### 1. AST vs Template?
+1. **Universal Models**: Format-agnostic data structures
+2. **Smart Positioning**: Layout calculations in mapper, rendering in builder
+3. **Native Integration**: Respect target format's native structures (placeholders)
+4. **Context Awareness**: Pass source context through the conversion chain
+5. **Graceful Degradation**: Fallbacks when ideal approaches fail
 
-**AST-like approach (Recommended):**
-- Handles complex nested structures
-- Preserves semantic meaning
-- Extensible to new LaTeX features
-- More complex to implement
+## Performance Considerations
 
-**Template approach:**
-- Simpler to start
-- Predictable results
-- Limited flexibility
-- Breaks with complex LaTeX
+### Current Bottlenecks
+1. **LaTeX Parsing**: Complex regex operations
+2. **Image Processing**: File I/O for each image
+3. **Position Calculations**: Per-element computations
 
-### 2. How to handle LaTeX complexity?
+### Optimization Opportunities
+1. **Caching**: Cache parsed documents and position calculations
+2. **Batch Processing**: Process multiple images in parallel
+3. **Lazy Loading**: Load images only when needed
 
-**Hierarchical parsing:**
-```python
-class Document:
-    def __init__(self):
-        self.metadata = {}
-        self.frames = []
+## Future Enhancements
 
-class Frame:
-    def __init__(self):
-        self.title = ""
-        self.elements = []
+### Phase 2: Advanced Features
+- **Math Equations**: Render LaTeX math as images or text
+- **TikZ Diagrams**: Convert to raster images
+- **Custom Commands**: User-defined LaTeX command support
+- **Overlays**: Handle Beamer overlay specifications
 
-class Element:
-    # Base class for text, itemize, block, etc.
-    pass
+### Phase 3: Multi-Format Support
+- **PowerPoint → LaTeX**: Round-trip conversion
+- **Markdown Support**: MD to PowerPoint conversion
+- **HTML Export**: Web-based presentation formats
+
+### Phase 4: Advanced Features
+- **Template System**: Custom PowerPoint templates
+- **Animation Support**: PowerPoint animations from LaTeX overlays
+- **Plugin Architecture**: Extensible parser/builder system
+
+## Testing Strategy
+
+### Current Testing Gaps
+1. **Integration Tests**: End-to-end conversion testing
+2. **Edge Cases**: Complex LaTeX structures
+3. **Performance Tests**: Large presentation handling
+
+### Recommended Test Structure
+```
+tests/
+├── unit/
+│   ├── test_parser.py
+│   ├── test_mapper.py
+│   └── test_builder.py
+├── integration/
+│   ├── test_simple_conversion.py
+│   ├── test_complex_conversion.py
+│   └── test_error_handling.py
+├── fixtures/
+│   ├── latex/
+│   └── expected/
+└── performance/
+    └── test_large_files.py
 ```
 
-### 3. What about LaTeX features?
+## Conclusion
 
-**Supported in Phase 1:**
-- Basic text and formatting
-- Itemize/enumerate lists
-- Block environments
-- Images and figures
-- Simple tables
+The current architecture has proven effective for basic LaTeX to PowerPoint conversion. The key success factors are:
 
-**Future phases:**
-- Math equations (as images/text)
-- TikZ diagrams (as images)
-- Complex overlays
-- Custom commands
+1. **Clean Separation**: Parser → Mapper → Builder pipeline
+2. **Universal Models**: Format-agnostic data structures
+3. **Smart Positioning**: Layout-aware content placement
+4. **Native Integration**: Respect for PowerPoint's structure
+5. **Robust Error Handling**: Graceful degradation when things go wrong
 
-## Implementation Strategy
-
-### Step 1: Core Parser
-Start with the enhanced parser we built - it works well!
-
-### Step 2: Mapping Layer
-Create clean separation between parsing and PowerPoint generation.
-
-### Step 3: Builder API
-Design a fluent API for PowerPoint creation:
-```python
-builder = SlideForge()
-builder.add_title_slide(title, author)
-builder.add_content_slide(title, content)
-builder.add_chart_slide(title, data)
-builder.save("output.pptx")
-```
-
-## Next Steps
-
-1. **Refactor existing code** into modular components
-2. **Design the API** interface
-3. **Create test cases** with different LaTeX structures
-4. **Build the core parser** based on our working version
+The system is now ready for Phase 2 enhancements while maintaining the solid foundation established in Phase 1.
