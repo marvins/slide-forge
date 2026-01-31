@@ -227,7 +227,7 @@ class LaTeX_Parser(Base_Parser):
                     block_title = "Block"
 
                 # Collect block content until \end{block}
-                block_content = []
+                block_content_lines = []
                 in_block = True
                 j = i + 1
                 while in_block and j < len(lines):
@@ -235,16 +235,20 @@ class LaTeX_Parser(Base_Parser):
                     if next_line.startswith(f'\\end{{{block_type}}}'):
                         in_block = False
                     elif next_line and not next_line.startswith('%'):
-                        block_content.append(next_line)
+                        block_content_lines.append(next_line)
                     j += 1
 
-                # Always create block element, even if content is empty
+                # Parse block content into individual elements
+                block_elements = self._parse_block_content(block_content_lines)
+
+                # Create block element with nested elements
                 elements.append(Universal_Element(
                     element_type=Element_Type.BLOCK,
                     content={
                         'type': block_type,  # block, alertblock, exampleblock
                         'title': block_title,
-                        'content': ' '.join(block_content) if block_content else ''
+                        'elements': block_elements,  # List of parsed elements
+                        'raw_content': ' '.join(block_content_lines) if block_content_lines else ''  # Keep raw content as fallback
                     }
                 ))
 
@@ -349,5 +353,72 @@ class LaTeX_Parser(Base_Parser):
         if current_text:
             text_content = ' '.join(current_text)
             elements.append(create_text_element(text_content))
+
+        return elements
+
+    def _parse_block_content(self, content_lines):
+        """Parse block content lines into individual elements."""
+        elements = []
+        current_text = []
+
+        for line in content_lines:
+            line = line.strip()
+            if not line or line.startswith('%'):
+                continue
+
+            # Handle equations in block content
+            if '$' in line or '\\begin{' in line:
+                # Split line by equations and process each part
+                equation_pattern = r'(\$\$[^$]+\$|\$[^$]+\$|\\begin\{equation\}.*?\\end\{equation\}|\\begin\{align\}.*?\\end\{align\}|\\begin\{equation\*\}.*?\\end\{equation\*\}|\\begin\{align\*\}.*?\\end\{align\*\})'
+                parts = re.split(equation_pattern, line, flags=re.DOTALL)
+
+                for i, part in enumerate(parts):
+                    if part.strip():
+                        # Check if this part is an equation (odd indices are equations from split)
+                        if i % 2 == 1:  # Odd indices are equations from regex split
+                            # This is an equation - create equation element
+                            if part.strip().startswith('$$') or part.strip().count('$') == 2:
+                                eq_type = 'display'
+                                eq_content = part.strip().strip('$').strip()
+                            elif part.strip().startswith('$') and part.strip().endswith('$'):
+                                eq_type = 'inline'
+                                eq_content = part.strip().strip('$')
+                            elif '\\begin{equation' in part:
+                                eq_type = 'display'
+                                eq_match = re.search(r'\\begin\{equation\*?\}(.*?)\\end\{equation\*?\}', part.strip(), flags=re.DOTALL)
+                                eq_content = eq_match.group(1).strip() if eq_match else part.strip()
+                            elif '\\begin{align' in part:
+                                eq_type = 'display'
+                                eq_match = re.search(r'\\begin\{align\*?\}(.*?)\\end\{align\*?\}', part.strip(), flags=re.DOTALL)
+                                eq_content = eq_match.group(1).strip() if eq_match else part.strip()
+                            else:
+                                eq_type = 'inline'
+                                eq_content = part.strip().strip('$')
+
+                            elements.append(Universal_Element(
+                                element_type=Element_Type.EQUATION,
+                                content={
+                                    'latex': eq_content,
+                                    'type': eq_type
+                                }
+                            ))
+                        else:
+                            # Regular text - add to current text buffer
+                            if current_text:
+                                current_text.append(part)
+                            else:
+                                current_text.append(part)
+            else:
+                # Regular text line
+                current_text.append(line)
+
+        # Add any remaining text as a single text element
+        if current_text:
+            text_content = ' '.join(current_text)
+            if text_content.strip():
+                elements.append(Universal_Element(
+                    element_type=Element_Type.TEXT,
+                    content=text_content.strip()
+                ))
 
         return elements

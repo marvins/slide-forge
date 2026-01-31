@@ -216,19 +216,9 @@ class PowerPoint_Builder(Base_Builder):
                 elif element.element_type == Element_Type.EQUATION and include_images:
                     self._add_equation_element(slide_obj, element, config, source_path)
                 elif element.element_type == Element_Type.BLOCK:
-                    # Use content placeholder for first block if available
-                    if not content_placeholder_used and hasattr(slide_obj.shapes, 'placeholders'):
-                        placeholder_success = self._add_block_to_placeholder(slide_obj, element, config, preserve_colors)
-                        if placeholder_success:
-                            content_placeholder_used = True
-                        else:
-                            # Fallback to element method if placeholder fails
-                            current_top = Inches(2.5)  # Start below title
-                            self._add_block_element(slide_obj, element, config, preserve_colors, current_top)
-                    else:
-                        # For blocks, we need to track positioning
-                        current_top = Inches(2.5)  # Start below title
-                        self._add_block_element(slide_obj, element, config, preserve_colors, current_top)
+                    # Always use element method for blocks to ensure they appear
+                    current_top = Inches(2.5)  # Start below title
+                    self._add_block_element(slide_obj, element, config, preserve_colors, current_top)
             except Exception as e:
                 self.logger.warning(f"Failed to add element {element.element_type}: {e}")
 
@@ -450,107 +440,170 @@ class PowerPoint_Builder(Base_Builder):
             title_p = text_frame.add_paragraph()
             title_p.text = block_title
             title_p.font.bold = True
-            title_p.font.color.rgb = text_color
-            title_font_size = config.get('content_font_size', 18)
-            if title_font_size > 0:
-                title_p.font.size = Pt(title_font_size)
 
-        # Add content paragraph (white) - process equations if present
-        if block_content:
-            # Check if content contains equations that need processing
-            if ('$' in block_content or '\\begin{' in block_content) and hasattr(self, '_render_latex_equation'):
-                # Content has equations - process them
-                import re
+        p.text = item
+        p.level = element.level if hasattr(element, 'level') else 0
+        # Set font size with proper conversion
+        font_size = config.get('content_font_size', 18)
+        if font_size > 0:
+            p.font.size = Pt(font_size)
 
-                # Split content by equations and process each part
-                equation_pattern = r'(\$\$[^$]+\$\$|\$[^$]+\$|\\begin\{equation\}.*?\\end\{equation\}|\\begin\{align\}.*?\\end\{align\}|\\begin\{equation\*\}.*?\\end\{equation\*\}|\\begin\{align\*\}.*?\\end\{align\*\})'
+        if preserve_colors:
+            p.font.color.rgb = config['content_color']
 
-                parts = re.split(equation_pattern, block_content, flags=re.DOTALL)
+def _add_image_element(self, slide_obj, element: Universal_Element,
+                      config: Dict[str, Any], source_path: str = '', current_top = Inches(2)):
+    """Add an image element to the slide and return the new top position."""
+    content = element.content
+    if isinstance(content, dict) and 'path' in content:
+        image_path = content['path']
+    else:
+        image_path = str(content)
 
-                current_top = 0.1  # Start position within block
-                for i, part in enumerate(parts):
-                    if part.strip():
-                        # Check if this part is an equation (odd indices are equations from split)
-                        if i % 2 == 1:  # Odd indices are equations from regex split
-                            # This is an equation - render it
-                            try:
-                                # Determine equation type
-                                if part.strip().startswith('$$') or part.strip().count('$') == 2:
-                                    eq_type = 'display'
-                                    eq_content = part.strip().strip('$').strip()
-                                elif part.strip().startswith('$') and part.strip().endswith('$'):
-                                    eq_type = 'inline'
-                                    eq_content = part.strip().strip('$')
-                                elif '\\begin{equation' in part:
-                                    eq_type = 'display'
-                                    # Extract content from equation environment
-                                    eq_match = re.search(r'\\begin\{equation\*?\}(.*?)\\end\{equation\*?\}', part.strip(), flags=re.DOTALL)
-                                    eq_content = eq_match.group(1).strip() if eq_match else part.strip()
-                                elif '\\begin{align' in part:
-                                    eq_type = 'display'
-                                    # Extract content from align environment
-                                    eq_match = re.search(r'\\begin\{align\*?\}(.*?)\\end\{align\*?\}', part.strip(), flags=re.DOTALL)
-                                    eq_content = eq_match.group(1).strip() if eq_match else part.strip()
-                                else:
-                                    eq_type = 'inline'
-                                    eq_content = part.strip().strip('$')
+    try:
+        # Convert relative paths to absolute
+        if not Path(image_path).is_absolute():
+            if source_path:
+                # Resolve relative to source document directory
+                source_dir = Path(source_path).parent
+                image_path = source_dir / image_path
+            else:
+                # Fallback to current working directory
+                image_path = Path.cwd() / image_path
 
-                                # Create equation element
-                                from src.slideforge.models.universal import Universal_Element, Element_Type
-                                eq_element = Universal_Element(
-                                    element_type=Element_Type.EQUATION,
-                                    content={
-                                        'latex': eq_content,
-                                        'type': eq_type
-                                    }
-                                )
+        if Path(image_path).exists():
+            left = Inches(1) if element.position else Inches(1)
+            top = current_top
+            width = Inches(6) if element.size else Inches(6)
+            height = Inches(4) if element.size else None
 
-                                # Render equation within block
-                                eq_image_path = self._render_latex_equation(
-                                    eq_content,
-                                    eq_type,
-                                    ''  # No source path for equation rendering
-                                )
+            slide_obj.shapes.add_picture(str(image_path), left, top, width, height)
 
-                                if eq_image_path and eq_image_path.exists():
-                                    # Add equation image to block
-                                    eq_left = Inches(0.1)
-                                    eq_top = Inches(0.1) + current_top
-                                    eq_width = Inches(7.8)
-                                    eq_height = Inches(0.8)
+            # Return the new top position (below this image)
+            image_height = height if height else Inches(4)
+            return top + image_height
+        else:
+            self.logger.warning(f"Image file not found: {image_path}")
+            return current_top
+    except Exception as e:
+        self.logger.warning(f"Failed to add image {image_path}: {e}")
+        return current_top
 
-                                    eq_picture = text_frame.add_picture(str(eq_image_path), eq_left, eq_top, eq_width, eq_height)
-                                    current_top += 0.9
-                                else:
-                                    # Fallback to text if equation rendering fails
-                                    text_p = text_frame.add_paragraph()
-                                    text_p.text = part.strip()
-                                    text_p.font.color.rgb = text_color
-                                    text_p.font.size = Pt(config.get('content_font_size', 18))
-                                    current_top += 0.4
+def _add_block_element(self, slide_obj, element: Universal_Element,
+                      config: Dict[str, Any], preserve_colors: bool, current_top):
+    """Add a Beamer-style block element to the slide and return the new top position."""
+    content = element.content
 
-                            except Exception as e:
-                                # Fallback to text if equation processing fails
-                                text_p = text_frame.add_paragraph()
-                                text_p.text = part.strip()
-                                text_p.font.color.rgb = text_color
-                                text_p.font.size = Pt(config.get('content_font_size', 18))
-                                current_top += 0.4
+    # Extract title, content, and type from block
+    if isinstance(content, dict):
+        block_type = content.get('type', 'block')
+        block_title = content.get('title', 'Block')
+        block_content = content.get('content', '')
+    else:
+        block_type = 'block'
+        block_title = 'Block'
+        block_content = str(content)
+
+    left = Inches(1) if element.position else Inches(1)
+    top = current_top
+    width = Inches(8) if element.size else Inches(8)
+    height = Inches(1.5) if element.size else Inches(1.5)  # Taller for blocks
+
+    # Create text box with Beamer-style formatting
+    text_box = slide_obj.shapes.add_textbox(left, top, width, height)
+
+    # Apply Beamer block styling based on type
+    fill = text_box.fill
+    fill.solid()
+
+    # Set colors based on block type
+    if block_type == 'alertblock':
+        fill.fore_color.rgb = RGBColor(220, 38, 127)  # Beamer alert red
+        text_color = RGBColor(255, 255, 255)  # White text
+    elif block_type == 'exampleblock':
+        fill.fore_color.rgb = RGBColor(0, 128, 0)  # Beamer example green
+        text_color = RGBColor(255, 255, 255)  # White text
+    else:  # regular block
+        fill.fore_color.rgb = RGBColor(59, 89, 152)  # Beamer blue background
+        text_color = RGBColor(255, 255, 255)  # White text
+
+    # Add border
+    line = text_box.line
+    line.color.rgb = RGBColor(0, 0, 0)  # Black border
+    line.width = Pt(1)  # Thin border
+
+    text_frame = text_box.text_frame
+    text_frame.margin_left = Inches(0.1)
+    text_frame.margin_right = Inches(0.1)
+    text_frame.margin_top = Inches(0.1)
+    text_frame.margin_bottom = Inches(0.1)
+
+    # Add title paragraph (bold, white)
+    if block_title:
+        title_p = text_frame.add_paragraph()
+        title_p.text = block_title
+        title_p.font.bold = True
+        title_p.font.color.rgb = text_color
+        title_font_size = config.get('content_font_size', 18)
+        if title_font_size > 0:
+            title_p.font.size = Pt(title_font_size)
+
+    # Add content paragraph (white) - handle nested elements
+    if block_content:
+        # Check if block has nested elements (new structure) or raw content (old structure)
+        if isinstance(block_content, dict) and 'elements' in block_content:
+            # New structure: block has parsed elements
+            block_elements = block_content['elements']
+
+            # Render each element within the block
+            current_top = 0.1
+            for block_elem in block_elements:
+                if block_elem.element_type == Element_Type.TEXT:
+                    # Add text paragraph to block
+                    text_p = text_frame.add_paragraph()
+                    text_p.text = block_elem.content if isinstance(block_elem.content, str) else str(block_elem.content)
+                    text_p.font.color.rgb = text_color
+                    text_p.font.size = Pt(config.get('content_font_size', 18))
+                    current_top += 0.4
+
+                elif block_elem.element_type == Element_Type.EQUATION:
+                    # Add equation image to block
+                    if hasattr(self, '_render_latex_equation'):
+                        eq_content = block_elem.content.get('latex', '') if isinstance(block_elem.content, dict) else str(block_elem.content)
+                        eq_type = block_elem.content.get('type', 'inline') if isinstance(block_elem.content, dict) else 'inline'
+
+                        eq_image_path = self._render_latex_equation(eq_content, eq_type, '')
+
+                        if eq_image_path and eq_image_path.exists():
+                            # Add equation image to block
+                            eq_left = Inches(0.1)
+                            eq_top = Inches(0.1) + current_top
+                            eq_width = Inches(7.8)
+                            eq_height = Inches(0.8)
+
+                            eq_picture = text_frame.add_picture(str(eq_image_path), eq_left, eq_top, eq_width, eq_height)
+                            current_top += 0.9
                         else:
-                            # Regular text - add as paragraph
+                            # Fallback to text
                             text_p = text_frame.add_paragraph()
-                            text_p.text = part.strip()
+                            text_p.text = eq_content
                             text_p.font.color.rgb = text_color
                             text_p.font.size = Pt(config.get('content_font_size', 18))
                             current_top += 0.4
-            else:
-                # No equations - treat as plain text
-                content_p = text_frame.add_paragraph()
-                content_p.text = block_content
-                content_p.font.color.rgb = text_color
-                content_font_size = config.get('content_font_size', 18)
-                if content_font_size > 0:
-                    content_p.font.size = Pt(content_font_size)
+
+                elif block_elem.element_type == Element_Type.IMAGE:
+                    # Add image to block (if supported)
+                    # This would need special handling for images within blocks
+                    pass
+
+        elif isinstance(block_content, str):
+            # Old structure: raw content string - treat as plain text
+            content_p = text_frame.add_paragraph()
+            content_p.text = block_content
+            content_p.font.color.rgb = text_color
+            content_font_size = config.get('content_font_size', 18)
+            if content_font_size > 0:
+                content_p.font.size = Pt(content_font_size)
 
         # Return the new top position (below this element)
         return top + height
