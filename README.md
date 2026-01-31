@@ -161,21 +161,9 @@ After completing each development phase, perform these updates to keep documenta
 ## TODO: Documentation Setup
 
 ### 1. Create Jupyter Book Structure
-- [x] Install Jupyter Book dependencies: `pip install jupyter-book sphinx`
-- [x] Initialize Jupyter Book in `docs/book/` directory
-- [x] Create `_config.yml` with Sphinx extensions for API docs
-- [x] Create `_toc.yml` with book structure (intro, API, tutorials, examples)
-- [x] Convert existing `docs/class-diagrams.md` to Jupyter Book format
 - [ ] Create interactive tutorial notebooks for basic conversion
-- [x] Set up auto-generated API documentation from docstrings
-- [x] Test local build with `jupyter-book build docs/book`
 
 ### 2. Setup GitHub Actions for Auto-Deployment
-- [x] Create `.github/workflows/docs.yml` workflow file
-- [x] Configure workflow to trigger on push to `main` branch
-- [x] Set up Python environment and install dependencies
-- [x] Add Jupyter Book build step
-- [x] Configure GitHub Pages deployment to `gh-pages` branch
 - [x] Add PR preview functionality (optional)
 - [ ] Test workflow with sample documentation changes
 - [ ] Configure GitHub repository settings for GitHub Pages
