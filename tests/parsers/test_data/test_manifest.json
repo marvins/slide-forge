@@ -78,6 +78,11 @@
       "file": "beamer_blocks.tex",
       "description": "Frame with Beamer block environments",
       "expected_elements": {"block": 3}
+    },
+    {
+      "file": "blocks_with_equations.tex",
+      "description": "Frame with Beamer blocks containing mathematical equations",
+      "expected_elements": {"block": 5}
     }
   ],
   "edge_cases": [

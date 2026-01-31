@@ -449,14 +449,101 @@ class PowerPoint_Builder(Base_Builder):
             if title_font_size > 0:
                 title_p.font.size = Pt(title_font_size)
 
-        # Add content paragraph (white)
+        # Add content paragraph (white) - process equations if present
         if block_content:
-            content_p = text_frame.add_paragraph()
-            content_p.text = block_content
-            content_p.font.color.rgb = text_color
-            content_font_size = config.get('content_font_size', 18)
-            if content_font_size > 0:
-                content_p.font.size = Pt(content_font_size)
+            # Check if content contains equations that need processing
+            if ('$' in block_content or '\\begin{' in block_content) and hasattr(self, '_render_latex_equation'):
+                # Content has equations - process them
+                import re
+
+                # Split content by equations and process each part
+                equation_pattern = r'(\$\$[^$]+\$\$|\$[^$]+\$|\\begin\{equation\}.*?\\end\{equation\}|\\begin\{align\}.*?\\end\{align\}|\\begin\{equation\*\}.*?\\end\{equation\*\}|\\begin\{align\*\}.*?\\end\{align\*\})'
+
+                parts = re.split(equation_pattern, block_content, flags=re.DOTALL)
+
+                current_top = 0.1  # Start position within block
+                for part in parts:
+                    if part.strip():
+                        if re.match(equation_pattern, part.strip(), flags=re.DOTALL):
+                            # This is an equation - render it
+                            try:
+                                # Determine equation type
+                                if part.strip().startswith('$$') or part.strip().count('$') == 2:
+                                    eq_type = 'display'
+                                    eq_content = part.strip().strip('$').strip()
+                                elif part.strip().startswith('$') and part.strip().endswith('$'):
+                                    eq_type = 'inline'
+                                    eq_content = part.strip().strip('$')
+                                elif '\\begin{equation' in part:
+                                    eq_type = 'display'
+                                    # Extract content from equation environment
+                                    eq_match = re.search(r'\\begin\{equation\*?\}(.*?)\\end\{equation\*?\}', part.strip(), flags=re.DOTALL)
+                                    eq_content = eq_match.group(1).strip() if eq_match else part.strip()
+                                elif '\\begin{align' in part:
+                                    eq_type = 'display'
+                                    # Extract content from align environment
+                                    eq_match = re.search(r'\\begin\{align\*?\}(.*?)\\end\{align\*?\}', part.strip(), flags=re.DOTALL)
+                                    eq_content = eq_match.group(1).strip() if eq_match else part.strip()
+                                else:
+                                    eq_type = 'inline'
+                                    eq_content = part.strip().strip('$')
+
+                                # Create equation element
+                                from src.slideforge.models.universal import Universal_Element, Element_Type
+                                eq_element = Universal_Element(
+                                    element_type=Element_Type.EQUATION,
+                                    content={
+                                        'latex': eq_content,
+                                        'type': eq_type
+                                    }
+                                )
+
+                                # Render equation within block
+                                eq_image_path = self._render_latex_equation(
+                                    eq_content,
+                                    eq_type,
+                                    ''  # No source path for equation rendering
+                                )
+
+                                if eq_image_path and eq_image_path.exists():
+                                    # Add equation image to block
+                                    eq_left = Inches(0.1)
+                                    eq_top = Inches(0.1) + current_top
+                                    eq_width = Inches(7.8)
+                                    eq_height = Inches(0.8)
+
+                                    eq_picture = text_frame.add_picture(str(eq_image_path), eq_left, eq_top, eq_width, eq_height)
+                                    current_top += 0.9
+                                else:
+                                    # Fallback to text if equation rendering fails
+                                    text_p = text_frame.add_paragraph()
+                                    text_p.text = part.strip()
+                                    text_p.font.color.rgb = text_color
+                                    text_p.font.size = Pt(config.get('content_font_size', 18))
+                                    current_top += 0.4
+
+                            except Exception as e:
+                                # Fallback to text if equation processing fails
+                                text_p = text_frame.add_paragraph()
+                                text_p.text = part.strip()
+                                text_p.font.color.rgb = text_color
+                                text_p.font.size = Pt(config.get('content_font_size', 18))
+                                current_top += 0.4
+                        else:
+                            # Regular text - add as paragraph
+                            text_p = text_frame.add_paragraph()
+                            text_p.text = part.strip()
+                            text_p.font.color.rgb = text_color
+                            text_p.font.size = Pt(config.get('content_font_size', 18))
+                            current_top += 0.4
+            else:
+                # No equations - treat as plain text
+                content_p = text_frame.add_paragraph()
+                content_p.text = block_content
+                content_p.font.color.rgb = text_color
+                content_font_size = config.get('content_font_size', 18)
+                if content_font_size > 0:
+                    content_p.font.size = Pt(content_font_size)
 
         # Return the new top position (below this element)
         return top + height

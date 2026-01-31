@@ -87,7 +87,7 @@ class TestPowerPointBuilderBlocks:
             result = builder._add_block_element(
                 mock_slide,
                 sample_block_element,
-                builder.themes['default'],
+                {'content_font_size': 18},  # Use simple config dict instead of themes
                 False,
                 Inches(2)
             )
@@ -119,7 +119,7 @@ class TestPowerPointBuilderBlocks:
             builder._add_block_element(
                 mock_slide,
                 sample_block_element,
-                builder.themes['default'],
+                {'content_font_size': 18},
                 False,
                 Inches(2)
             )
@@ -169,7 +169,7 @@ class TestPowerPointBuilderBlocks:
                 builder._add_block_element(
                     mock_slide,
                     element,
-                    builder.themes['default'],
+                    {'content_font_size': 18},
                     False,
                     Inches(2)
                 )
@@ -199,7 +199,7 @@ class TestPowerPointBuilderBlocks:
             result = builder._add_block_element(
                 mock_slide,
                 element,
-                builder.themes['default'],
+                {'content_font_size': 18},
                 False,
                 Inches(2)
             )
@@ -232,7 +232,7 @@ class TestPowerPointBuilderBlocks:
             builder._add_block_element(
                 mock_slide,
                 sample_block_element,
-                builder.themes['default'],
+                {'content_font_size': 18},
                 False,
                 Inches(2)
             )
@@ -253,7 +253,7 @@ class TestPowerPointBuilderBlocks:
         result = builder._add_block_to_placeholder(
             mock_slide,
             sample_block_element,
-            builder.themes['default'],
+            {'content_font_size': 18},
             False
         )
 
@@ -277,7 +277,7 @@ class TestPowerPointBuilderBlocks:
             builder._add_block_element(
                 mock_slide,
                 sample_block_element,
-                builder.themes['default'],
+                {'content_font_size': 18},
                 False,
                 Inches(2)
             )
@@ -287,3 +287,146 @@ class TestPowerPointBuilderBlocks:
             mock_text_box.text_frame.margin_right = mock_inches.return_value
             mock_text_box.text_frame.margin_top = mock_inches.return_value
             mock_text_box.text_frame.margin_bottom = mock_inches.return_value
+
+    def test_block_element_with_equations(self, builder, mock_slide, sample_block_element):
+        """Test that blocks with equations are processed correctly."""
+        # Create a block element with equation content
+        block_with_equations = Universal_Element(
+            element_type=Element_Type.BLOCK,
+            content={
+                'type': 'block',
+                'title': 'Math Block',
+                'content': 'The formula $E = mc^2$ is famous. And \\begin{equation} \\int_0^1 x dx = \\frac{1}{2} \\end{equation} shows integration.'
+            }
+        )
+
+        with patch('src.slideforge.builders.powerpoint_builder.Inches'), \
+             patch.object(builder, '_render_latex_equation') as mock_render_eq, \
+             patch.object(mock_slide.shapes, 'add_textbox') as mock_add_textbox:
+
+            # Mock text box and text frame
+            mock_text_box = Mock()
+            mock_text_box.fill = Mock()
+            mock_text_box.line = Mock()
+            mock_text_frame = Mock()
+            mock_text_frame.paragraphs = []
+            mock_text_frame.add_paragraph = Mock()
+            mock_text_frame.add_picture = Mock()
+
+            # Mock equation rendering
+            mock_eq_path = Mock()
+            mock_eq_path.exists.return_value = True
+            mock_render_eq.return_value = mock_eq_path
+
+            mock_add_textbox.return_value = mock_text_box
+            mock_text_box.text_frame = mock_text_frame
+
+            # Call the method
+            result = builder._add_block_element(
+                mock_slide,
+                block_with_equations,
+                {'content_font_size': 18},
+                False,
+                Inches(2)
+            )
+
+            # Verify equation rendering was called
+            assert mock_render_eq.call_count >= 1
+
+            # Verify text frame methods were called
+            mock_text_frame.add_paragraph.assert_called()
+
+            # Verify picture was added for equations
+            mock_text_frame.add_picture.assert_called()
+
+    def test_block_element_mixed_content_equations(self, builder, mock_slide):
+        """Test blocks with mixed text and equation content."""
+        mixed_block = Universal_Element(
+            element_type=Element_Type.BLOCK,
+            content={
+                'type': 'block',
+                'title': 'Mixed Content',
+                'content': 'First text. Then $x^2 + y^2 = z^2$. More text. Finally \\begin{equation} a^2 + b^2 = c^2 \\end{equation} final text.'
+            }
+        )
+
+        with patch('src.slideforge.builders.powerpoint_builder.Inches'), \
+             patch.object(builder, '_render_latex_equation') as mock_render_eq, \
+             patch.object(mock_slide.shapes, 'add_textbox') as mock_add_textbox:
+
+            # Mock text box and text frame
+            mock_text_box = Mock()
+            mock_text_box.fill = Mock()
+            mock_text_box.line = Mock()
+            mock_text_frame = Mock()
+            mock_text_frame.paragraphs = []
+            mock_text_frame.add_paragraph = Mock()
+            mock_text_frame.add_picture = Mock()
+
+            # Mock equation rendering
+            mock_eq_path = Mock()
+            mock_eq_path.exists.return_value = True
+            mock_render_eq.return_value = mock_eq_path
+
+            mock_add_textbox.return_value = mock_text_box
+            mock_text_box.text_frame = mock_text_frame
+
+            # Call the method
+            builder._add_block_element(
+                mock_slide,
+                mixed_block,
+                {'content_font_size': 18},
+                False,
+                Inches(2)
+            )
+
+            # Should have rendered both equations
+            assert mock_render_eq.call_count == 2
+
+            # Should have added both text paragraphs and equation pictures
+            assert mock_text_frame.add_paragraph.call_count >= 2
+            assert mock_text_frame.add_picture.call_count == 2
+
+    def test_block_element_equation_fallback(self, builder, mock_slide):
+        """Test fallback to text when equation rendering fails."""
+        block_with_eq = Universal_Element(
+            element_type=Element_Type.BLOCK,
+            content={
+                'type': 'block',
+                'title': 'Fallback Test',
+                'content': 'Formula $x + y = z$ should fallback to text.'
+            }
+        )
+
+        with patch('src.slideforge.builders.powerpoint_builder.Inches'), \
+             patch.object(builder, '_render_latex_equation') as mock_render_eq, \
+             patch.object(mock_slide.shapes, 'add_textbox') as mock_add_textbox:
+
+            # Mock text box and text frame
+            mock_text_box = Mock()
+            mock_text_box.fill = Mock()
+            mock_text_box.line = Mock()
+            mock_text_frame = Mock()
+            mock_text_frame.paragraphs = []
+            mock_text_frame.add_paragraph = Mock()
+
+            # Mock equation rendering failure
+            mock_render_eq.return_value = None
+
+            mock_add_textbox.return_value = mock_text_box
+            mock_text_box.text_frame = mock_text_frame
+
+            # Call the method
+            builder._add_block_element(
+                mock_slide,
+                block_with_eq,
+                {'content_font_size': 18},
+                False,
+                Inches(2)
+            )
+
+            # Should have attempted equation rendering
+            mock_render_eq.assert_called()
+
+            # Should have fallen back to text paragraphs
+            assert mock_text_frame.add_paragraph.call_count >= 1
