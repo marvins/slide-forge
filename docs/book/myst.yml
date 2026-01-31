@@ -9,30 +9,29 @@ project:
     - name: Slide Forge Team
   github: https://github.com/marvins/slide-forge
   # To autogenerate a Table of Contents, run "jupyter book init --write-toc"
-# Site branding configuration
 site:
   template: book-theme
   options:
     # favicon: favicon.ico
     # logo: site_logo.png
     base_url: /slide-forge/
-    nav:
-      - title: Introduction
-        url: /intro
-      - title: Installation
-        url: /installation
-      - title: Quick Start
-        url: /quickstart
-      - title: API Reference
-        children:
-          - title: Auto-Generated API
-            url: /api/auto
-        - title: Reference
-          children:
-            - title: Class Diagrams
-              url: /reference/class-diagrams
-            - title: Sequence Diagrams
-              url: /reference/sequence-diagrams
+  nav:
+    - title: Introduction
+      url: /intro
+    - title: Installation
+      url: /installation
+    - title: Quick Start
+      url: /quickstart
+    - title: API Reference
+      children:
+        - title: Auto-Generated API
+          url: /api/auto
+    - title: Reference
+      children:
+        - title: Class Diagrams
+          url: /reference/class-diagrams
+        - title: Sequence Diagrams
+          url: /reference/sequence-diagrams
   # Custom branding
   title: Slide Forge Documentation
   logo: ""
