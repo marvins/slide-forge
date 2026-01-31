@@ -37,7 +37,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install jupyter-book sphinx myst-nb
+          pip install jupyter-book sphinx myst-nb myst-parser mystmd
           pip install -e .  # Install slide-forge in development mode
 
       - name: Generate API documentation
@@ -47,7 +47,7 @@ jobs:
       - name: Build Jupyter Book
         run: |
           cd docs/book
-          BASE_URL=/slide-forge/ jupyter-book build --html
+          BASE_URL=/slide-forge/ myst build --html
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -113,7 +113,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install jupyter-book sphinx myst-nb
+          pip install jupyter-book sphinx myst-nb myst-parser mystmd
           pip install -e .
 
       - name: Generate API documentation
@@ -123,7 +123,7 @@ jobs:
       - name: Build documentation (check for errors)
         run: |
           cd docs/book
-          BASE_URL=/slide-forge/ jupyter-book build --html
+          BASE_URL=/slide-forge/ myst build --html
 
       - name: Check for broken links
         run: |

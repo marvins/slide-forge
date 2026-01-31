@@ -14,6 +14,7 @@ site:
   options:
     # favicon: favicon.ico
     # logo: site_logo.png
+    base_url: /slide-forge/
   nav:
     - title: Introduction
       url: /intro
@@ -29,8 +30,8 @@ site:
       children:
         - title: Class Diagrams
           url: /reference/class-diagrams
-        - title: New Reference Page
-          url: /reference/new-page
+        - title: Sequence Diagrams
+          url: /reference/sequence-diagrams
 
 # MyST v2 configuration for autodoc
 parse:
