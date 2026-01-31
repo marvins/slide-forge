@@ -186,8 +186,13 @@ class LaTeX_Parser(Base_Parser):
         in_equation = False
         equation_lines = []
         current_text = []
+        skip_until_line = -1  # Skip lines until this line number
 
-        for line in lines:
+        for i, line in enumerate(lines):
+            # Skip lines that are part of processed blocks
+            if i <= skip_until_line:
+                continue
+
             line = line.strip()
             if not line or line.startswith('%'):
                 continue
@@ -205,6 +210,46 @@ class LaTeX_Parser(Base_Parser):
                         element_type=Element_Type.ITEMIZE,
                         content={'items': self.sections}
                     ))
+                continue
+
+            # Handle Beamer block environments
+            if line.startswith('\\begin{block}') or line.startswith('\\begin{alertblock}') or line.startswith('\\begin{exampleblock}'):
+                # Extract block type and title
+                block_type_match = re.search(r'\\begin{(block|alertblock|exampleblock)}\{([^}]+)\}', line)
+                if block_type_match:
+                    block_type = block_type_match.group(1)
+                    block_title = block_type_match.group(2)
+
+                    # Unescape special characters in title
+                    block_title = block_title.replace(r'\&', '&').replace(r'\$', '$').replace(r'\%', '%').replace(r'\_', '_')
+                else:
+                    block_type = 'block'
+                    block_title = "Block"
+
+                # Collect block content until \end{block}
+                block_content = []
+                in_block = True
+                j = i + 1
+                while in_block and j < len(lines):
+                    next_line = lines[j].strip()
+                    if next_line.startswith(f'\\end{{{block_type}}}'):
+                        in_block = False
+                    elif next_line and not next_line.startswith('%'):
+                        block_content.append(next_line)
+                    j += 1
+
+                # Always create block element, even if content is empty
+                elements.append(Universal_Element(
+                    element_type=Element_Type.BLOCK,
+                    content={
+                        'type': block_type,  # block, alertblock, exampleblock
+                        'title': block_title,
+                        'content': ' '.join(block_content) if block_content else ''
+                    }
+                ))
+
+                # Set skip_until_line to the last line of the block
+                skip_until_line = j - 1
                 continue
 
             # Handle itemize environments

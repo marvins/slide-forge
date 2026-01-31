@@ -8,3 +8,4 @@ _build
 output/
 .equation_cache
 test.pptx
+*.pptx

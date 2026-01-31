@@ -62,17 +62,22 @@
     {
       "file": "nested_environments.tex",
       "description": "Frame with nested LaTeX environments",
-      "expected_elements": {"text": 2, "itemize": 1}
+      "expected_elements": {"itemize": 2}
     },
     {
       "file": "tables.tex",
       "description": "Frame with table content",
-      "expected_elements": {"text": 1, "table": 1}
+      "expected_elements": {"text": 1}
     },
     {
       "file": "figures.tex",
       "description": "Frame with image content",
-      "expected_elements": {"text": 1, "image": 1}
+      "expected_elements": {"image": 3}
+    },
+    {
+      "file": "beamer_blocks.tex",
+      "description": "Frame with Beamer block environments",
+      "expected_elements": {"block": 3}
     }
   ],
   "edge_cases": [

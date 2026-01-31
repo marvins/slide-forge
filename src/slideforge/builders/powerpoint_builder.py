@@ -220,7 +220,9 @@ class PowerPoint_Builder(Base_Builder):
                     if not content_placeholder_used and hasattr(slide_obj.shapes, 'placeholders'):
                         content_placeholder_used = self._add_block_to_placeholder(slide_obj, element, config, preserve_colors)
                     else:
-                        self._add_block_element(slide_obj, element, config, preserve_colors)
+                        # For blocks, we need to track positioning
+                        current_top = Inches(2.5)  # Start below title
+                        self._add_block_element(slide_obj, element, config, preserve_colors, current_top)
             except Exception as e:
                 self.logger.warning(f"Failed to add element {element.element_type}: {e}")
 
@@ -390,31 +392,71 @@ class PowerPoint_Builder(Base_Builder):
 
     def _add_block_element(self, slide_obj, element: Universal_Element,
                           config: Dict[str, Any], preserve_colors: bool, current_top):
-        """Add a block/quote element to the slide and return the new top position."""
+        """Add a Beamer-style block element to the slide and return the new top position."""
         content = element.content
-        if isinstance(content, str):
-            text = content
+
+        # Extract title, content, and type from block
+        if isinstance(content, dict):
+            block_type = content.get('type', 'block')
+            block_title = content.get('title', 'Block')
+            block_content = content.get('content', '')
         else:
-            text = str(content)
+            block_type = 'block'
+            block_title = 'Block'
+            block_content = str(content)
 
         left = Inches(1) if element.position else Inches(1)
         top = current_top
         width = Inches(8) if element.size else Inches(8)
-        height = Inches(1) if element.size else Inches(1)
+        height = Inches(1.5) if element.size else Inches(1.5)  # Taller for blocks
 
+        # Create text box with Beamer-style formatting
         text_box = slide_obj.shapes.add_textbox(left, top, width, height)
+
+        # Apply Beamer block styling based on type
+        fill = text_box.fill
+        fill.solid()
+
+        # Set colors based on block type
+        if block_type == 'alertblock':
+            fill.fore_color.rgb = RGBColor(220, 38, 127)  # Beamer alert red
+            text_color = RGBColor(255, 255, 255)  # White text
+        elif block_type == 'exampleblock':
+            fill.fore_color.rgb = RGBColor(0, 128, 0)  # Beamer example green
+            text_color = RGBColor(255, 255, 255)  # White text
+        else:  # regular block
+            fill.fore_color.rgb = RGBColor(59, 89, 152)  # Beamer blue background
+            text_color = RGBColor(255, 255, 255)  # White text
+
+        # Add border
+        line = text_box.line
+        line.color.rgb = RGBColor(0, 0, 0)  # Black border
+        line.width = Pt(1)  # Thin border
+
         text_frame = text_box.text_frame
-        p = text_frame.paragraphs[0]
-        p.text = text
+        text_frame.margin_left = Inches(0.1)
+        text_frame.margin_right = Inches(0.1)
+        text_frame.margin_top = Inches(0.1)
+        text_frame.margin_bottom = Inches(0.1)
 
-        # Set font size with proper conversion
-        font_size = config.get('content_font_size', 18)
-        if font_size > 0:
-            p.font.size = Pt(font_size)
-        p.font.italic = True
+        # Add title paragraph (bold, white)
+        if block_title:
+            title_p = text_frame.add_paragraph()
+            title_p.text = block_title
+            title_p.font.bold = True
+            title_p.font.color.rgb = text_color
+            title_font_size = config.get('content_font_size', 18)
+            if title_font_size > 0:
+                title_p.font.size = Pt(title_font_size)
 
-        if preserve_colors:
-            p.font.color.rgb = config['content_color']
+        # Add content paragraph (white)
+        if block_content:
+            content_p = text_frame.add_paragraph()
+            content_p.text = block_content
+            content_p.font.color.rgb = text_color
+            content_font_size = config.get('content_font_size', 18)
+            if content_font_size > 0:
+                content_p.font.size = Pt(content_font_size)
 
         # Return the new top position (below this element)
         return top + height
@@ -518,35 +560,12 @@ class PowerPoint_Builder(Base_Builder):
                                 config: Dict[str, Any], preserve_colors: bool) -> bool:
         """Add block to the slide's content placeholder. Returns True if successful."""
         try:
-            # Find the content placeholder
-            for placeholder in slide_obj.placeholders:
-                if placeholder.placeholder_format.type == 1:  # Body placeholder
-                    content = element.content
-                    if isinstance(content, str):
-                        text = content
-                    else:
-                        text = str(content)
-
-                    placeholder.text = text
-
-                    # Apply formatting to the placeholder
-                    text_frame = placeholder.text_frame
-                    for paragraph in text_frame.paragraphs:
-                        # Set font size with proper conversion
-                        font_size = config.get('content_font_size', 18)
-                        if font_size > 0:
-                            paragraph.font.size = Pt(font_size)
-
-                        paragraph.font.italic = True
-
-                        if preserve_colors:
-                            paragraph.font.color.rgb = config['content_color']
-
-                    return True
+            # For blocks, we prefer creating a separate text box with styling
+            # rather than using the placeholder, to get the visual effect
+            return False  # Force fallback to _add_block_element
         except Exception as e:
-            self.logger.warning(f"Failed to use content placeholder for block: {e}")
-
-        return False
+            self.logger.warning(f"Failed to add block to placeholder: {e}")
+            return False
 
     def _add_equation_element(self, slide_obj, element: Universal_Element,
                             config: Dict[str, Any], source_path: str = ''):
