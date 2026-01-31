@@ -14,7 +14,11 @@ site:
   options:
     # favicon: favicon.ico
     # logo: site_logo.png
-    base_url: /slide-forge/
+    base_url: /
+  # Site configuration for proper asset paths
+  title: Slide Forge Documentation
+  description: Documentation for Slide Forge - LaTeX Beamer to PowerPoint converter
+  github: https://github.com/marvins/slide-forge
   nav:
     - title: Introduction
       url: /intro
@@ -32,10 +36,6 @@ site:
           url: /reference/class-diagrams
         - title: Sequence Diagrams
           url: /reference/sequence-diagrams
-  # Custom branding
-  title: Slide Forge Documentation
-  logo: ""
-  description: Documentation for Slide Forge - LaTeX Beamer to PowerPoint converter
 
 # MyST v2 configuration for autodoc
 parse:
