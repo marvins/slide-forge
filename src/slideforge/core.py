@@ -20,10 +20,12 @@
 
 """Slide Forge Core - Bidirectional presentation converter."""
 
+#  Python Standard Libraries
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import logging
 
+#  Project Libraries
 from .base import Base_Parser, Base_Builder, Base_Mapper, Format_Detector
 from .models.universal import Universal_Document, Conversion_Options
 from .exceptions import Slide_Forge_Error, ParseError, BuilderError, MappingError
@@ -40,22 +42,16 @@ class Slide_Forge:
         """Initialize Slide Forge with default configuration."""
         self.logger = logging.getLogger(__name__)
 
-        # Format detector
+        # Initialize components
+        self.parsers = {}
+        self.builders = {}
+        self.mapper = None
         self.format_detector = Format_Detector()
 
-        # Parsers for different input formats
-        self.parsers: Dict[str, Base_Parser] = {}
-
-        # Builders for different output formats
-        self.builders: Dict[str, Base_Builder] = {}
-
-        # Content mapper for format conversions
-        self.mapper: Optional[Base_Mapper] = None
-
-        # Default options
+        # Set default options
         self.default_options = Conversion_Options()
 
-        # Initialize with available parsers/builders
+        # Initialize components (will register available parsers/builders)
         self._initialize_components()
 
     def _initialize_components(self):
@@ -161,7 +157,17 @@ class Slide_Forge:
             output_path = Path(output_file)
 
             # Create conversion options
-            options = Conversion_Options(**{**self.default_options.to_dict(), **kwargs})
+            default_dict = self.default_options.to_dict()
+
+            # Merge custom_settings properly
+            kwargs_custom_settings = kwargs.get('custom_settings', {})
+            merged_custom_settings = {**default_dict.get('custom_settings', {}), **kwargs_custom_settings}
+
+            # Create final kwargs dict
+            final_kwargs = {**default_dict, **kwargs}
+            final_kwargs['custom_settings'] = merged_custom_settings
+
+            options = Conversion_Options(**final_kwargs)
 
             if options.verbose:
                 self.logger.setLevel(logging.DEBUG)
@@ -210,8 +216,9 @@ class Slide_Forge:
 
             # Build output document
             builder = self.builders[target_format]
-            # Pass source path for image resolution
-            build_options = {**options.custom_settings, 'source_path': document.source_path}
+
+            # Pass source path for image resolution (convert to string)
+            build_options = {**options.custom_settings, 'source_path': str(document.source_path)}
             success = builder.build_presentation(slide_structures, output_path, **build_options)
 
             if success and options.verbose:
@@ -272,7 +279,7 @@ class Slide_Forge:
                 slide_structures = self._document_to_slides(document)
 
             builder = self.builders[target_format]
-            
+
             # Pass source path for image resolution (empty for string conversion)
             build_options = {**options.custom_settings, 'source_path': ''}
             return builder.build_presentation(slide_structures, output_path, **build_options)
@@ -331,5 +338,8 @@ class Slide_Forge:
         for key, value in kwargs.items():
             if hasattr(self.default_options, key):
                 setattr(self.default_options, key, value)
+            elif key == 'custom_settings':
+                # Handle custom_settings specially
+                self.default_options.custom_settings.update(value)
             else:
                 self.logger.warning(f"Unknown default option: {key}")

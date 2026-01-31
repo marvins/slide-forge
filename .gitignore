@@ -7,3 +7,4 @@ _build
 *.egg-info/
 output/
 .equation_cache
+test.pptx

@@ -36,7 +36,16 @@ class TestSlideForge:
     @pytest.fixture
     def slide_forge(self):
         """Create Slide_Forge instance."""
-        return Slide_Forge()
+        
+        # Create instance without auto-registration for testing
+        slide_forge = Slide_Forge()
+
+        # Clear auto-registered components for clean test
+        slide_forge.parsers = {}
+        slide_forge.builders = {}
+
+        # Keep mapper as it's expected to be initialized
+        return slide_forge
 
     @pytest.fixture
     def sample_latex_file(self, tmp_path):
