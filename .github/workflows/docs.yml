@@ -47,7 +47,7 @@ jobs:
       - name: Build Jupyter Book
         run: |
           cd docs/book
-          BASE_URL=/slide-forge/ myst build --html
+          myst build --html
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -123,7 +123,7 @@ jobs:
       - name: Build documentation (check for errors)
         run: |
           cd docs/book
-          BASE_URL=/slide-forge/ myst build --html
+          myst build --html
 
       - name: Check for broken links
         run: |
