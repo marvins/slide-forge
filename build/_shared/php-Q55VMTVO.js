@@ -1,1 +1,1 @@
-import{a}from"/slide-forge//build/_shared/chunk-5XNNEDOD.js";import"/slide-forge//build/_shared/chunk-J3PKFMLQ.js";import"/slide-forge//build/_shared/chunk-OZE3FFNP.js";export default a();
+import{a}from"/build/_shared/chunk-5XNNEDOD.js";import"/build/_shared/chunk-J3PKFMLQ.js";import"/build/_shared/chunk-OZE3FFNP.js";export default a();
